@@ -1,31 +1,38 @@
 # Poly Amp
 
-**A free guitar amp and practice app for Windows.**
+### Guitar Pro tabs + real amp tones. One free app for practice.
 
-Plug your guitar into your computer, put on headphones and play through real amp and pedal sounds. Then learn songs
-from tabs: the app listens and shows which notes you hit.
+Grab songs from Songsterr or open your own Guitar Pro files, plug in your guitar and play along: your guitar sounds
+through captures of real amps and pedals while the rest of the band plays from the tab. Poly Amp hears every note and
+shows what you hit and what you missed.
 
 [![Download for Windows](https://img.shields.io/badge/Download-Windows%2010%20%2F%2011-6a6cf0?style=for-the-badge)](../../releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-9c7bf6?style=for-the-badge)](LICENSE)
 
-![Poly Amp: amps, pedals and presets](docs/screenshots/play.png)
+![Your tabs + real amp tone in one window](docs/hero.png)
 
-## What it does
+**One window instead of four:** a tab player, an amp sim, a tuner and a metronome.
 
-- 🎸 **Great tone without the gear.** Amps and pedals captured from real hardware with neural networks
-  ([NAM](https://www.neuralampmodeler.com)), thousands of them free on [TONE3000](https://www.tone3000.com), plus
-  built-in amps, drives, cabs, chorus, delay and reverb. Presets play right away.
-- 🎼 **Learn songs from tabs.** Open Guitar Pro files or grab one from Songsterr in a click. Slow it down, loop the hard
-  part and play along: the app marks every note you hit or miss, or waits until you play the right one.
-- 🎯 **Practice that listens.** Find notes on the fretboard, play scales against a timer, drill chord changes. No
+## Why Poly Amp
+
+- 📥 **Songsterr tabs straight into your library.** Copy a song link on Songsterr and press **Ctrl+V** in Poly Amp.
+  Songsterr opens right in the app; hit their Guitar Pro download (a free account is enough) and the tab lands in your
+  library, ready to play. Got your own Guitar Pro files? Point the app at the folder.
+- 🔥 **Practice that sounds like playing.** Drilling a song through a thin clean tone gets old fast. Here your guitar
+  runs through neural captures of real amps and pedals ([NAM](https://www.neuralampmodeler.com)), with thousands of
+  free ones on [TONE3000](https://www.tone3000.com), plus built-in amps, drives, cabs, delay and reverb. Presets play
+  right away.
+- 🎼 **Learn it your way.** Slow a song down, loop the hard part, count in, solo or mute any track, follow it on the
+  fretboard.
+- 👂 **It actually listens.** *Play along* marks every hit and miss. *Wait for me* stops until you play the right note.
+  No more faking your way through the hard bars.
+- 🎯 **Skills, not just songs.** Find notes on the fretboard, run scales against the clock, drill chord changes. No
   buttons to press, just play.
-- 🆓 **Free and open source.** No subscription, no ads, no sign-up to play.
+- 🆓 **Free. For real.** No subscription, no ads, no account needed to play. Open source.
 
-Also inside: a tuner, a metronome, built-in riffs to hear presets without a guitar, and a recorder for your own riffs.
-
-| Learn songs from tabs | Practice scales and chords |
+| Your guitar through real amps and pedals | Scales and chords that listen |
 | --- | --- |
-| ![Tabs](docs/screenshots/tabs.png) | ![Practice](docs/screenshots/practice.png) |
+| ![Play](docs/screenshots/play.png) | ![Practice](docs/screenshots/practice.png) |
 
 ## What you need
 
@@ -228,5 +235,6 @@ Poly Amp is released under the [MIT License](LICENSE). It uses third-party compo
 core (MIT), Eigen (MPL 2.0), NAudio (MIT), WebView2 SDK, alphaTab (MPL 2.0), the Bravura font (OFL) and the Sonivox
 sound bank (Apache 2.0); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Not affiliated with TONE3000 or Songsterr. Amp and pedal names in presets and tone titles are trademarks of their
+Not affiliated with Arobas Music (Guitar Pro), TONE3000 or Songsterr. Guitar Pro is a trademark of Arobas Music; Poly
+Amp only opens its file formats. Amp and pedal names in presets and tone titles are trademarks of their
 owners and are used only to describe the captured gear.
