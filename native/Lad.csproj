@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>PolyAmp</AssemblyName>
+    <RootNamespace>Lad</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <!-- сразу полная оптимизация: аудиоколбэк не должен ждать перекомпиляции на лету -->
+    <TieredCompilation>false</TieredCompilation>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- сборка вместе со средой .NET: у пользователя ничего доустанавливать не нужно -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+    <!-- исходники сторонней библиотеки и её сборка — не часть проекта C# -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);third_party/**;namcore/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio.Asio" Version="2.2.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <!-- Официальная библиотека NAM (собирается namcore/build.bat) в двух вариантах: с AVX2 и запасной без него.
+       Без неё работают только модели A1 и LSTM. -->
+  <ItemGroup>
+    <Content Include="namcore/bin/namcore.dll" Condition="Exists('namcore/bin/namcore.dll')" Link="namcore.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="namcore/bin/namcore-sse2.dll" Condition="Exists('namcore/bin/namcore-sse2.dll')" Link="namcore-sse2.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Лицензия приложения и тексты лицензий сторонних компонентов — в каждой сборке, рядом с exe -->
+  <ItemGroup>
+    <Content Include="..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\licenses\**\*" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Интерфейс — общий с веб-версией, копируется рядом с exe -->
+  <ItemGroup>
+    <Content Include="..\public\**\*" Link="ui\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

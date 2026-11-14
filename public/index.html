@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Poly Amp</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27.3 9.500v13L16 29 4.700 22.500v-13z' fill='%235b5bd6' stroke='%235b5bd6' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M8.500 16h3l2.200-5.500 4.600 11 2.200-5.500h3' fill='none' stroke='%23fff' stroke-width='2.200' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b5bd6"/><stop offset="1" stop-color="#a877f5"/></linearGradient></defs>
+        <path d="M16 3 27.3 9.5v13L16 29 4.7 22.5v-13z" fill="url(#brandGrad)" stroke="url(#brandGrad)" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M8.5 16h3l2.2-5.5 4.600 11 2.2-5.5h3" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Poly Amp</span>
+    </div>
+
+    <nav class="areas" aria-label="App areas">
+      <button class="area" data-area="play">Play</button>
+      <button class="area" data-area="learn">Learn</button>
+    </nav>
+
+    <nav class="tabs" id="learnTabs" role="tablist" aria-label="Exercises" hidden>
+      <button class="tab" role="tab" data-tab="practice">Practice</button>
+      <button class="tab" role="tab" data-tab="tabs">Tabs</button>
+    </nav>
+
+    <div class="input">
+      <button class="btn tuner-btn" id="tunerBtn" title="Open the tuner">Tuner</button>
+      <div class="heard" id="heard" title="The note the app hears right now">
+        <span class="heard-label">hearing</span><span class="heard-note" id="heardNote">—</span>
+      </div>
+      <div class="meter" title="Input level"><div class="meter-fill" id="meterFill"></div></div>
+      <select id="deviceSelect" class="select" aria-label="Audio input" hidden></select>
+      <div class="seg seg-sm" id="channelSeg" title="Audio interface channel" hidden>
+        <button data-v="1">Input 1</button><button data-v="2">Input 2</button><button data-v="mix">1+2</button>
+      </div>
+      <button id="connectBtn" class="btn btn-primary" hidden>Connect guitar</button>
+      <button id="audioChip" class="audio-chip" title="Audio settings" hidden></button>
+    </div>
+  </header>
+
+  <main>
+    <div class="notice" id="notice">
+      <div>
+        <strong>No guitar connected yet.</strong>
+        Plug it into your audio interface and press “Connect guitar” — or just click the fretboard: the app will hear its built-in synth.
+      </div>
+    </div>
+    <div class="notice notice-error" id="error" hidden></div>
+
+    <nav class="ex-switch" id="practiceNav" aria-label="Practice exercises" hidden>
+      <button data-ex="notes"><b>Notes</b><small>find notes on the fretboard</small></button>
+      <button data-ex="scales"><b>Scales</b><small>positions and speed with a timer</small></button>
+      <button data-ex="chords"><b>Chords</b><small>clean, fast chord changes</small></button>
+    </nav>
+
+    <section class="view" id="view-play" hidden></section>
+    <section class="view" id="view-notes" role="tabpanel" hidden></section>
+    <section class="view" id="view-scales" role="tabpanel" hidden></section>
+    <section class="view" id="view-chords" role="tabpanel" hidden></section>
+    <section class="view" id="view-tabs" role="tabpanel" hidden></section>
+  </main>
+
+  <footer class="dock">
+    <div class="dock-group metro">
+      <span class="dock-title">Metronome</span>
+      <button class="btn btn-round" id="mToggle" aria-label="Start the metronome">▶</button>
+      <div class="metro-beats" id="mBeats" aria-hidden="true"></div>
+      <button class="btn btn-ghost btn-sq" id="mMinus" aria-label="Slower">−</button>
+      <div class="metro-bpm"><output id="mBpm">90</output><small>BPM</small></div>
+      <button class="btn btn-ghost btn-sq" id="mPlus" aria-label="Faster">+</button>
+      <input type="range" id="mRange" min="40" max="220" value="90" aria-label="Tempo">
+      <select id="mSig" class="select" aria-label="Time signature">
+        <option value="2">2/4</option><option value="3">3/4</option><option value="4" selected>4/4</option><option value="6">6/8</option>
+      </select>
+      <button class="btn btn-ghost" id="mTap">Tap</button>
+      <input type="range" id="mVol" min="0" max="100" value="80" title="Volume of the metronome and reference notes" aria-label="Metronome volume" hidden>
+    </div>
+    <div class="dock-group" id="outGroup" hidden>
+      <label class="switch" title="Guitar sound at the output">
+        <input type="checkbox" id="outMute" checked><span class="switch-ui"></span><span>Guitar sound</span>
+      </label>
+      <input type="range" id="outVol" min="-40" max="6" step="0.5" value="-6" aria-label="Guitar volume">
+    </div>
+    <div class="dock-group monitor" id="monitorGroup" hidden>
+      <label class="switch" title="Hear the guitar through the app. Leave it off if Direct Monitor is on at your interface.">
+        <input type="checkbox" id="monOn"><span class="switch-ui"></span><span>Monitor guitar</span>
+      </label>
+      <div class="seg seg-sm" id="monTone">
+        <button data-v="clean">Clean</button><button data-v="drive">Drive</button>
+      </div>
+      <input type="range" id="monVol" min="0" max="100" value="80" aria-label="Monitoring volume">
+    </div>
+  </footer>
+
+  <div class="modal-backdrop" id="tunerModal" hidden>
+    <div class="modal tuner-modal" role="dialog" aria-modal="true" aria-labelledby="tunerTitle">
+      <header>
+        <h2 id="tunerTitle">Tuner</h2>
+        <button class="btn btn-ghost btn-sq" id="tunerClose" aria-label="Close">×</button>
+
+      </header>
+      <div id="tunerBody"></div>
+    </div>
+  </div>
+
+  <div id="settings"></div>
+  <div id="t3k"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

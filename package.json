@@ -1,0 +1,12 @@
+{
+  "name": "poly-amp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Poly Amp: free guitar amp simulator and practice app for Windows (web version of the UI)",
+  "keywords": ["guitar", "amp-simulator", "neural-amp-modeler", "nam", "guitar-tabs", "guitar-pro", "guitar-practice", "tone3000"],
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

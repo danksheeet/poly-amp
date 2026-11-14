@@ -1,0 +1,9 @@
+# text files are stored with LF; batch files need CRLF for cmd.exe labels to work reliably
+* text=auto
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.png binary
+*.sf2 binary
+*.woff binary
+*.woff2 binary

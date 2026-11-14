@@ -1,0 +1,22 @@
+# build output (dist is produced by build.bat and shipped via GitHub Releases)
+dist/
+native/bin/
+native/obj/
+native/namcore/bin/
+native/namcore/obj/
+
+# editors and tools
+.vs/
+.vscode/
+.idea/
+.claude/
+*.user
+*.suo
+
+# web version
+node_modules/
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
