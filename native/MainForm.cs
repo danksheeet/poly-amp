@@ -256,7 +256,8 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>Страницы, на которые ведут подсказки приложения: бесплатные драйверы ASIO.</summary>
-    private static bool IsHelpUrl(string url) => url is "https://asio4all.org/" or "https://github.com/dechamps/FlexASIO";
+    private static bool IsHelpUrl(string url) => url is "https://asio4all.org/" or "https://github.com/dechamps/FlexASIO"
+        or "https://github.com/danksheeet/poly-amp" or "https://github.com/danksheeet/poly-amp/issues";
 
     private static bool IsSongsterrUrl(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out Uri? u) && u.Scheme == Uri.UriSchemeHttps

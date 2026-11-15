@@ -504,6 +504,40 @@ main:has(> #view-play:not([hidden])) { max-width: 1440px; } /* в невысок
 .tuner.is-ok .string-btn.is-near { border-color: var(--good); background: var(--good-soft); }
 .tuner.is-ok .string-btn.is-near b { color: var(--good); }
 
+/* «поддержать автора»: кнопка в шапке и окно со звездой на GitHub и криптоадресами */
+.support-btn { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; padding: 7px 15px 7px 12px; }
+.support-btn svg { width: 15px; height: 15px; color: #f2668b; }
+.support-btn[aria-pressed="true"] { background: rgba(242, 102, 139, 0.14); border-color: rgba(242, 102, 139, 0.4); }
+@media (max-width: 1240px) {
+  .support-btn { padding: 7px 10px; }
+  .support-btn span { display: none; }
+}
+.support-modal { width: min(580px, 94vw); }
+.sp-lead { margin: 0 0 16px; color: var(--ink-2); line-height: 1.55; }
+.sp-star { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin-bottom: 24px; }
+.sp-star span { color: var(--ink-3); font-size: 13.5px; }
+.support-modal h3 { margin: 0 0 4px; font: 600 15.5px/1.3 var(--display); }
+.sp-warn { margin: 0 0 12px; color: var(--ink-3); font-size: 13px; line-height: 1.45; }
+.sp-wallet {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 12px 12px 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.sp-coin { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px; }
+.sp-coin b { font-weight: 620; }
+.sp-coin small { color: var(--ink-3); font-size: 12.5px; }
+.sp-wallet code { color: var(--ink); font: 500 13.5px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace; word-break: break-all; user-select: all; }
+.sp-copy { min-width: 78px; }
+.sp-copy.is-done { color: var(--good); }
+.sp-foot { margin: 16px 0 0; color: var(--ink-3); font-size: 13.5px; }
+.sp-foot a { color: var(--accent-2); text-decoration: underline; text-underline-offset: 2px; }
+
 .tuner-modal { width: min(740px, 94vw); }
 .tuner-modal .tuner { background: none; border: 0; box-shadow: none; padding: 0 0 4px; }
 .tuner-modal .tuner-note { height: 150px; }

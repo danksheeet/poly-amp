@@ -87,6 +87,45 @@ $('tunerClose').addEventListener('click', () => setTuner(false));
 tunerModal.addEventListener('pointerdown', (e) => e.target === tunerModal && setTuner(false));
 document.addEventListener('keydown', (e) => e.key === 'Escape' && !tunerModal.hidden && setTuner(false));
 
+// ---------- поддержать автора: звезда на GitHub, криптоадреса с копированием ----------
+const supportModal = $('supportModal');
+function setSupport(open) {
+  supportModal.hidden = !open;
+  $('supportBtn').setAttribute('aria-pressed', open);
+}
+$('supportBtn').addEventListener('click', () => setSupport(supportModal.hidden));
+$('supportClose').addEventListener('click', () => setSupport(false));
+supportModal.addEventListener('pointerdown', (e) => e.target === supportModal && setSupport(false));
+document.addEventListener('keydown', (e) => e.key === 'Escape' && !supportModal.hidden && setSupport(false));
+supportModal.addEventListener('click', async (e) => {
+  const link = e.target.closest('[data-link]');
+  if (link) {
+    e.preventDefault();
+    // в приложении ссылку открывает системный браузер (адреса разрешены в MainForm.IsHelpUrl)
+    if (isNative) engine.openUrl(link.dataset.link);
+    else window.open(link.dataset.link, '_blank', 'noopener');
+    return;
+  }
+  const btn = e.target.closest('.sp-copy');
+  if (!btn) return;
+  const code = btn.parentElement.querySelector('code');
+  try {
+    await navigator.clipboard.writeText(code.textContent.trim());
+  } catch {
+    const range = document.createRange();
+    range.selectNodeContents(code);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+    document.execCommand('copy');
+  }
+  btn.textContent = 'Copied';
+  btn.classList.add('is-done');
+  setTimeout(() => {
+    btn.textContent = 'Copy';
+    btn.classList.remove('is-done');
+  }, 1600);
+});
+
 // ---------- индикаторы входа ----------
 const heard = $('heard');
 const heardNote = $('heardNote');
