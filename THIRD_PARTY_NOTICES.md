@@ -1,8 +1,9 @@
 # Third-party notices
 
 Poly Amp itself is licensed under the [MIT License](LICENSE). It uses the following third-party components,
-each under its own license. Full license texts are in the [`licenses`](licenses) folder (copied next to
-`PolyAmp.exe` in every build) and, for the bundled web assets, in `public/vendor/alphatab`.
+each under its own license. Full license texts are in the [`licenses`](licenses) folder and, for the bundled web
+assets, in `public/vendor/alphatab`. In the app folder, the license texts, `LICENSE.txt` and this file are in
+`licenses`, and the web assets are in `ui/vendor/alphatab`.
 
 | Component | Used for | License | License text |
 | --- | --- | --- | --- |

@@ -19,6 +19,11 @@
     <!-- сборка вместе со средой .NET: у пользователя ничего доустанавливать не нужно -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
+    <!-- при публикации всё приложение и среда .NET — один PolyAmp.exe; рядом только папки lib, licenses и ui -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+    <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
     <InvariantGlobalization>false</InvariantGlobalization>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
     <!-- исходники сторонней библиотеки и её сборка — не часть проекта C# -->
@@ -33,14 +38,14 @@
   <!-- Официальная библиотека NAM (собирается namcore/build.bat) в двух вариантах: с AVX2 и запасной без него.
        Без неё работают только модели A1 и LSTM. -->
   <ItemGroup>
-    <Content Include="namcore/bin/namcore.dll" Condition="Exists('namcore/bin/namcore.dll')" Link="namcore.dll" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="namcore/bin/namcore-sse2.dll" Condition="Exists('namcore/bin/namcore-sse2.dll')" Link="namcore-sse2.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="namcore/bin/namcore.dll" Condition="Exists('namcore/bin/namcore.dll')" Link="lib\namcore.dll" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="namcore/bin/namcore-sse2.dll" Condition="Exists('namcore/bin/namcore-sse2.dll')" Link="lib\namcore-sse2.dll" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
-  <!-- Лицензия приложения и тексты лицензий сторонних компонентов — в каждой сборке, рядом с exe -->
+  <!-- Лицензия приложения и тексты лицензий сторонних компонентов — в каждой сборке, в папке licenses -->
   <ItemGroup>
-    <Content Include="..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\LICENSE" Link="licenses\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\THIRD_PARTY_NOTICES.md" Link="licenses\THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\licenses\**\*" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

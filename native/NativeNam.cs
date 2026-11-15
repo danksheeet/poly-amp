@@ -36,6 +36,8 @@ internal sealed unsafe class NativeNam : NamModel
         System.Runtime.Intrinsics.X86.Avx2.IsSupported && System.Runtime.Intrinsics.X86.Fma.IsSupported
         && !string.Equals(Environment.GetEnvironmentVariable("POLYAMP_NAM"), "sse2", StringComparison.OrdinalIgnoreCase);
     private static readonly string file = useAvx2 ? "namcore.dll" : "namcore-sse2.dll";
+    // библиотеки лежат в подпапке lib рядом с exe, чтобы корень папки приложения оставался чистым
+    private static readonly string fullPath = Path.Combine(AppContext.BaseDirectory, "lib", file);
     private static readonly bool resolverSet = SetResolver(); // до первого вызова библиотеки
     private static readonly int version = Probe();
 
@@ -46,14 +48,14 @@ internal sealed unsafe class NativeNam : NamModel
     private static bool SetResolver()
     {
         NativeLibrary.SetDllImportResolver(typeof(NativeNam).Assembly, (name, _, _) =>
-            name == Dll && NativeLibrary.TryLoad(Path.Combine(AppContext.BaseDirectory, file), out IntPtr h) ? h : IntPtr.Zero);
+            name == Dll && NativeLibrary.TryLoad(fullPath, out IntPtr h) ? h : IntPtr.Zero);
         return true;
     }
 
     private static int Probe()
     {
         // без своего варианта библиотеки не пробуем грузить чужой: вариант с AVX2 на старом процессоре упадёт
-        if (!File.Exists(Path.Combine(AppContext.BaseDirectory, file))) return 0;
+        if (!File.Exists(fullPath)) return 0;
         try { return namcore_version(); }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException) { return 0; }
     }
