@@ -459,7 +459,7 @@ export function createTabs(root, { engine, store }) {
       pick.title = t === track ? 'This track is on screen' : 'Show and play this track';
       pick.addEventListener('click', () => {
         closePop();
-        if (t !== track) selectTrack(i);
+        if (t !== track) selectTrack(i, true);
       });
       const mute = el('button', 'ib ib-sm');
       const syncMute = () => {
@@ -591,15 +591,41 @@ export function createTabs(root, { engine, store }) {
     ref.time.textContent = '0:00';
     ref.bar.style.transform = 'scaleX(0)';
     loadMix();
-    // по умолчанию — первая гитарная дорожка (не ударные)
-    const saved = store.get('tabs.track.' + songKey(), null);
-    const first = s.tracks.findIndex((t) => !t.isPercussion && t.staves[0]?.tuning?.length);
-    selectTrack(saved != null && s.tracks[saved] ? saved : Math.max(0, first));
+    // дорожка, которую ты сам выбрал для этой песни, иначе — первая гитара
+    const saved = store.get('tabs.pick.' + songKey(), null);
+    selectTrack(saved != null && s.tracks[saved] ? saved : defaultTrack(s));
   }
 
-  function selectTrack(i) {
+  /** Дорожка по умолчанию — основная гитара. В файлах Songsterr у вокала тоже есть табулатура и шесть «струн»,
+      поэтому гитару узнаём по инструменту (General MIDI 24–31) и названию, а не по строю. Из нескольких гитар
+      берём ту, где больше всего нот: это основная партия, а не дорожка с парой нот фидбэка или эффекта. */
+  const VOCAL = /vocal|voice|vox|sing|choir|вокал|голос/i;
+  function defaultTrack(s) {
+    const own = s.tracks.filter((t) => !t.isPercussion);
+    const strings = (t) => t.staves[0]?.tuning?.length || 0;
+    const guitarSound = (t) => t.playbackInfo.program >= 24 && t.playbackInfo.program <= 31;
+    const counts = new Map();
+    const notes = (t) => {
+      if (!counts.has(t)) {
+        let n = 0;
+        for (const st of t.staves) for (const bar of st.bars) for (const v of bar.voices) for (const b of v.beats) n += b.notes.length;
+        counts.set(t, n);
+      }
+      return counts.get(t);
+    };
+    const most = (list) => list.reduce((best, t) => (!best || notes(t) > notes(best) ? t : best), null);
+    const pick =
+      most(own.filter((t) => guitarSound(t) && hasTab(t) && !VOCAL.test(t.name))) ||
+      most(own.filter((t) => hasTab(t) && strings(t) >= 6 && !VOCAL.test(t.name))) ||
+      own.find((t) => strings(t));
+    return pick ? pick.index : 0;
+  }
+
+  /** user — выбор из меню дорожек: его запоминаем для песни. Автоматический выбор не сохраняем,
+      иначе он выглядел бы как твой и не исправлялся бы. */
+  function selectTrack(i, user = false) {
     track = score.tracks[i];
-    store.set('tabs.track.' + songKey(), i);
+    if (user) store.set('tabs.pick.' + songKey(), i);
     marks.clear();
     resetStats();
     if (opts.mode === 'along') muteOwnTrack();
