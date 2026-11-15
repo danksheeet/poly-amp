@@ -26527,6 +26527,10 @@
 		static findKnownDevice(sinkId) {
 			return WebAudioHelper._knownDevices.find((d) => d.deviceId === sinkId);
 		}
+		/** Poly Amp patch: куда подключать выход синтезатора — к узлу приложения (реверберация), если он задан. */
+		static outputFor(ctx) {
+			return Environment.globalThis.alphaTabOutputNode?.(ctx) || ctx.destination;
+		}
 		static createAudioContext() {
 			if ("AudioContext" in Environment.globalThis) return new AudioContext();
 			if ("webkitAudioContext" in Environment.globalThis) return new webkitAudioContext();
@@ -33480,7 +33484,7 @@
 			this.source.loop = true;
 			this.source.connect(this._audioNode, 0, 0);
 			this.source.start(0);
-			this._audioNode.connect(ctx.destination, 0, 0);
+			this._audioNode.connect(WebAudioHelper.outputFor(ctx), 0, 0); // Poly Amp patch
 		}
 		pause() {
 			super.pause();
@@ -46332,7 +46336,7 @@
 			this.createSource(ctx);
 			this.source.start(0);
 			this.source.connect(worklet);
-			worklet.connect(ctx.destination);
+			worklet.connect(WebAudioHelper.outputFor(ctx)); // Poly Amp patch
 			for (const e of pendingEvents) worklet.port.postMessage(e);
 			if (this._pendingEvents === pendingEvents) this._pendingEvents = void 0;
 		}

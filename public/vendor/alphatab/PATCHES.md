@@ -1,8 +1,8 @@
 # Changes to alphaTab 1.9.0
 
 `alphaTab.js` is the `dist/alphaTab.js` build from the `@coderline/alphatab@1.9.0` package (MPL 2.0 license,
-source: https://github.com/CoderLine/alphaTab) with three fixes. Each changed place is marked with a
-`Poly Amp patch` comment.
+source: https://github.com/CoderLine/alphaTab) with a fix for tuplet rendering and a hook for the audio
+output. Each changed place is marked with a `Poly Amp patch` comment.
 
 ## A tuplet that doesn't start on the first note of a beam group
 
@@ -21,3 +21,12 @@ Fixed in three places:
 - `TabBarRenderer.emitHelperSkyline` (rhythm under the tab) and `emitHelperSkyline` in the renderer with
   the top line — instead of the first note, all notes under the beam are checked, and space for the tuplet
   bracket is reserved for every tuplet that starts inside the group.
+
+## Audio output goes through the app's reverb
+
+alphaTab's synthesizer has no effects of its own, so tabs sounded completely dry. The two web audio
+outputs (`AlphaSynthAudioWorkletOutput` and the `ScriptProcessor` fallback) used to connect straight to
+`ctx.destination`. Now they connect to `WebAudioHelper.outputFor(ctx)`, a new helper that returns the node
+from `window.alphaTabOutputNode(ctx)` when the app provides one, and `ctx.destination` otherwise. Poly Amp
+provides a node with a reverb and a limiter (`public/js/modes/tabreverb.js`). Without the hook alphaTab
+behaves exactly as before.

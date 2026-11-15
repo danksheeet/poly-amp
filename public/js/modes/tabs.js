@@ -7,6 +7,7 @@ import { templateFromMidis } from '../chroma.js';
 import { icon } from '../icons.js';
 import { Fretboard } from '../fretboard.js';
 import { createTabLibrary } from './tablib.js';
+import { setTabReverb } from './tabreverb.js';
 
 const VENDOR = 'vendor/alphatab/';
 const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxl,.xml';
@@ -156,7 +157,7 @@ export function createTabs(root, { engine, store, chain }) {
         <button class="ib" data-ref="metro" aria-pressed="false" title="Metronome click (M)">${icon('metronome')}</button>
         <button class="ib" data-ref="countIn" aria-pressed="false" title="Count-in bar before playback (C)">${icon('countIn')}</button>
         <span class="tb-sep"></span>
-        <button class="ib" data-ref="volBtn" title="Overall tab volume" aria-haspopup="true"></button>
+        <button class="ib" data-ref="volBtn" title="Tab volume and reverb" aria-haspopup="true"></button>
         <button class="ib" data-ref="profile" aria-pressed="false" title="Show notation above the tab (N)" aria-label="Notation above the tab">${icon('staff')}</button>
         <button class="ib" data-ref="zoomOut" title="Smaller (Ctrl+−)" aria-label="Smaller">${icon('zoomOut')}</button>
         <button class="ib" data-ref="zoomIn" title="Larger (Ctrl++)" aria-label="Larger">${icon('zoomIn')}</button>
@@ -211,10 +212,11 @@ export function createTabs(root, { engine, store, chain }) {
   const shell = root.querySelector('.tb-shell');
 
   const opts = Object.assign(
-    { volume: 70, speed: 100, loop: false, metro: false, countIn: false, mode: 'listen', profile: 'tab', zoom: 1, fret: false, lib: engine.isNative },
+    { volume: 70, speed: 100, loop: false, metro: false, countIn: false, mode: 'listen', profile: 'tab', zoom: 1, fret: false, lib: engine.isNative, reverb: 40 },
     store.get('tabs.opts', {})
   );
   const saveOpts = () => store.set('tabs.opts', opts);
+  setTabReverb(opts.reverb / 100);
 
   let AT = null;
   let api = null;
@@ -248,6 +250,9 @@ export function createTabs(root, { engine, store, chain }) {
     if (popFor === anchor) return closePop();
     popFor = anchor;
     ref.pop.replaceChildren();
+    // окно одно на все кнопки: убираем ширину и место прошлого окна (раньше после «громкости» микшер сжимался до 280 px)
+    ref.pop.className = 'tb-pop';
+    ref.pop.style.left = '0px';
     build(ref.pop);
     ref.pop.hidden = false;
     const tr = tb.getBoundingClientRect();
@@ -268,7 +273,16 @@ export function createTabs(root, { engine, store, chain }) {
   document.addEventListener('keydown', (e) => e.key === 'Escape' && popFor && closePop());
 
   // ---------- alphaTab ----------
-  async function ensureApi() {
+  let apiPromise = null;
+  function ensureApi() {
+    // одна загрузка на всех: вызовы во время загрузки ждут ту же самую
+    apiPromise ??= createApi().catch((e) => {
+      apiPromise = null;
+      throw e;
+    });
+    return apiPromise;
+  }
+  async function createApi() {
     if (api) return api;
     setLoading(true, 'Loading the tab module…');
     try {
@@ -327,11 +341,16 @@ export function createTabs(root, { engine, store, chain }) {
       runTicker(playing && opts.mode === 'along');
       if (!playing) closeAllPending();
     });
+    // позиция приходит десятки раз в секунду — страницу трогаем, только когда цифра или полоса правда изменились
+    let shown = { time: '', total: '', bar: '' };
     api.playerPositionChanged.on((e) => {
       endTime = e.endTime;
-      ref.time.textContent = clock(e.currentTime);
-      ref.total.textContent = clock(e.endTime);
-      ref.bar.style.transform = `scaleX(${e.endTime ? Math.min(1, e.currentTime / e.endTime).toFixed(4) : 0})`;
+      const time = clock(e.currentTime);
+      const total = clock(e.endTime);
+      const bar = (e.endTime ? Math.min(1, e.currentTime / e.endTime) : 0).toFixed(3);
+      if (time !== shown.time) ref.time.textContent = shown.time = time;
+      if (total !== shown.total) ref.total.textContent = shown.total = total;
+      if (bar !== shown.bar) ref.bar.style.transform = `scaleX(${(shown.bar = bar)})`;
     });
     api.playedBeatChanged.on(onPlayedBeat);
     // какие дорожки сейчас звучат: alphaTab сообщает о каждой сыгранной ноте, синхронно со звуком
@@ -397,6 +416,7 @@ export function createTabs(root, { engine, store, chain }) {
   let levels = []; // по номеру дорожки, 0..1
   let meterRaf = 0;
   let meterT = 0;
+  let meterDrawn = 0; // когда индикаторы рисовались в последний раз
   const audible = (i) => !mix.mute[i] && (!Object.values(mix.solo).some(Boolean) || !!mix.solo[i]);
   function onNotesPlayed(e) {
     for (const ev of e.events) {
@@ -414,11 +434,15 @@ export function createTabs(root, { engine, store, chain }) {
       levels[i] = levels[i] < 0.02 ? 0 : levels[i] * k;
       any ||= levels[i] > 0;
     }
-    // всё, что показывает уровень дорожки: строки окна «Tracks» и кнопка текущей дорожки
-    for (const n of root.querySelectorAll('[data-meter]')) {
-      const i = +n.dataset.meter;
-      n.style.setProperty('--lvl', (levels[i] || 0).toFixed(3));
-      n.classList.toggle('is-silent', !audible(i));
+    // всё, что показывает уровень дорожки: строки окна «Tracks» и кнопка текущей дорожки.
+    // Рисуем не чаще 30 раз в секунду: на мониторе 240 Гц перерисовка на каждом кадре заметно грузила систему.
+    if (!any || t - meterDrawn >= 33) {
+      meterDrawn = t;
+      for (const n of root.querySelectorAll('[data-meter]')) {
+        const i = +n.dataset.meter;
+        n.style.setProperty('--lvl', (levels[i] || 0).toFixed(2));
+        n.classList.toggle('is-silent', !audible(i));
+      }
     }
     meterRaf = any ? requestAnimationFrame(drawMeters) : 0;
     if (!any) meterT = 0;
@@ -1112,8 +1136,28 @@ export function createTabs(root, { engine, store, chain }) {
       });
       const row = el('div', 'tb-vol-row');
       row.append(slider, val);
-      box.append(head, row, el('p', 'tb-pop-note', 'Individual instrument volumes are under “Tracks”.')
-);
+      box.append(head, row, el('p', 'tb-pop-note', 'Individual instrument volumes are under “Tracks”.'));
+      // реверберация: синтезатор табов звучит сухо, немного «комнаты» делает его живее
+      const rvHead = el('div', 'tb-pop-head', 'Reverb');
+      const rvVal = el('span', 'mx-val', opts.reverb + ' %');
+      const rv = el('input');
+      rv.type = 'range';
+      rv.min = 0;
+      rv.max = 100;
+      rv.step = 5;
+      rv.value = opts.reverb;
+      rv.setAttribute('aria-label', 'Reverb');
+      rv.addEventListener('input', () => {
+        opts.reverb = +rv.value;
+        rvVal.textContent = opts.reverb + ' %';
+        saveOpts();
+        setTabReverb(opts.reverb / 100);
+      });
+      const rvRow = el('div', 'tb-vol-row');
+      rvRow.append(rv, rvVal);
+      const rvBox = el('div', 'tb-rv');
+      rvBox.append(rvHead, rvRow);
+      box.append(rvBox);
     })
   );
 

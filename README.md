@@ -115,7 +115,7 @@ The board shows **IN → blocks → OUT**, presets on the left and the selected 
   **Library**: choose a folder and every tab file in it and its subfolders appears, grouped and searchable (the app
   only reads tab files there). **Tracks** sets which track to show and play plus volume, mute and solo for each track;
   the indicators light up on every note a track plays. The player has speed (25–125 %), loop (select bars with the
-  mouse), metronome click, count-in, zoom and a fretboard view. Modes: *Listen*, *Play along* (your track is muted,
+  mouse), metronome click, count-in, reverb, zoom and a fretboard view. Modes: *Listen*, *Play along* (your track is muted,
   hits and misses are marked) and *Wait for me*. Tab audio goes to the Windows default output device.
 - **Songsterr**: copy a song link on [Songsterr](https://www.songsterr.com) and press **Ctrl+V** on the Tabs screen
   (or use the download buttons, or type a band or song). Songsterr opens in an app window. It asks you to sign in once
@@ -176,7 +176,7 @@ Poly Amp is free and will stay free. If it helps you play, you can help it grow:
 | Coin | Network | Address |
 | --- | --- | --- |
 | USDT | TRON (TRC-20) | `TG7dDuWyayxfNRWzjEp7yBvVKjz3g3tNYF` |
-| USDT, USDC, BNB | BNB Smart Chain (BEP-20) | `0x8846e0340A85f2058F0C79407714A06E33038CD2` |
+| USDT | BNB Smart Chain (BEP-20) | `0x8846e0340A85f2058F0C79407714A06E33038CD2` |
 
 ## Building from source
 

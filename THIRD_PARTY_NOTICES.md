@@ -19,7 +19,8 @@ assets, in `public/vendor/alphatab`. In the app folder, the license texts, `LICE
 
 ## Modified files
 
-`public/vendor/alphatab/alphaTab.js` is alphaTab 1.9.0 with three small fixes to tuplet rendering. Every
+`public/vendor/alphatab/alphaTab.js` is alphaTab 1.9.0 with small fixes to tuplet rendering and a hook that
+routes its audio output through the app's reverb. Every
 change is marked with a `Poly Amp patch` comment and described in
 [`public/vendor/alphatab/PATCHES.md`](public/vendor/alphatab/PATCHES.md). As required by the MPL 2.0, the
 modified file is distributed in source form under the same license.
