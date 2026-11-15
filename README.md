@@ -191,7 +191,8 @@ The app has headless self-tests that write a report to a file:
 ```
 PolyAmp.exe --dsptest out.txt      effects chain, note and chord recognition, ASIO sample formats, buffer sizes,
                                    NAM models (both library variants) checked against a reference implementation
-PolyAmp.exe --asiotest out.txt     opens the first ASIO driver for a few seconds (output muted) and measures the callback
+PolyAmp.exe --asiotest out.txt     opens the first ASIO driver that works (or: --asiotest out.txt "Driver name") for a few
+                                   seconds with the output muted and measures the callback
 PolyAmp.exe --sstest out.txt       Songsterr window: saving downloads into the library, duplicates, file names
 PolyAmp.exe --screenshot out.png   starts the app, saves a screenshot of the UI and exits
 ```

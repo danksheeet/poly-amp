@@ -329,8 +329,9 @@ internal static class Tests
         {
             string[] drivers = AudioEngine.Drivers();
             log.AppendLine("drivers: " + string.Join(" | ", drivers));
-            string? name = wanted ?? drivers.FirstOrDefault();
-            if (name == null) { log.AppendLine("no suitable driver"); return 2; }
+            // без указанного драйвера берём первый, который открывается: в списке бывают драйверы неподключённых устройств
+            string[] candidates = wanted != null ? [wanted] : drivers;
+            if (candidates.Length == 0) { log.AppendLine("no suitable driver"); return 2; }
 
             using var engine = new AudioEngine();
             engine.SetGlobal("out.mute", 1); // на выход не идёт ничего
@@ -339,7 +340,13 @@ internal static class Tests
             var clock = Stopwatch.StartNew();
             var resets = new List<long>();
             engine.ResetRequested += () => { lock (resets) resets.Add(clock.ElapsedMilliseconds); };
-            var info = engine.Open(name, 0, 0, 0);
+            AudioInfo? opened = null;
+            foreach (string d in candidates)
+            {
+                try { opened = engine.Open(d, 0, 0, 0); break; }
+                catch (Exception ex) when (wanted == null) { log.AppendLine($"skipped: {d} ({ex.Message})"); }
+            }
+            if (opened is not { } info) { log.AppendLine("no driver opened"); return 2; }
             log.AppendLine(string.Create(Inv, $"opened: {info.Driver}, {info.SampleRate} Hz, buffer {info.BufferSize}, type {info.SampleType}"));
             log.AppendLine(string.Create(Inv, $"latency: in {info.InputLatency} + out {info.OutputLatency} samples = {(info.InputLatency + info.OutputLatency) * 1000.0 / info.SampleRate:0.0} ms"));
             log.AppendLine("inputs: " + string.Join(" | ", info.Inputs));
@@ -379,7 +386,7 @@ internal static class Tests
             engine.Close();
             Thread.Sleep(400);
             long tReopen = clock.ElapsedMilliseconds;
-            engine.Open(name, 0, 0, 0);
+            engine.Open(info.Driver, 0, 0, 0);
             sw.Restart();
             while (sw.ElapsedMilliseconds < 1500) { Application.DoEvents(); Thread.Sleep(10); }
             log.AppendLine(string.Create(Inv, $"after reopen at {tReopen} ms: callbacks {engine.Callbacks} in 1.5 s"));

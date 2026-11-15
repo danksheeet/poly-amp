@@ -109,22 +109,44 @@ supportModal.addEventListener('click', async (e) => {
   const btn = e.target.closest('.sp-copy');
   if (!btn) return;
   const code = btn.parentElement.querySelector('code');
-  try {
-    await navigator.clipboard.writeText(code.textContent.trim());
-  } catch {
+  const text = code.textContent.trim();
+  // сначала синхронно, прямо внутри клика: так работает без запросов разрешений; потом — через буфер обмена браузера
+  let ok = copyNow(text);
+  if (!ok && navigator.clipboard) {
+    try {
+      await Promise.race([navigator.clipboard.writeText(text), new Promise((_, fail) => setTimeout(fail, 1200))]);
+      ok = true;
+    } catch {}
+  }
+  if (!ok) {
+    // скопировать не дали — выделяем адрес, чтобы скопировать его самому
     const range = document.createRange();
     range.selectNodeContents(code);
     getSelection().removeAllRanges();
     getSelection().addRange(range);
-    document.execCommand('copy');
   }
-  btn.textContent = 'Copied';
-  btn.classList.add('is-done');
-  setTimeout(() => {
+  btn.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+  btn.classList.toggle('is-done', ok);
+  clearTimeout(btn.resetTimer);
+  btn.resetTimer = setTimeout(() => {
     btn.textContent = 'Copy';
     btn.classList.remove('is-done');
-  }, 1600);
+  }, ok ? 1600 : 4000);
 });
+function copyNow(text) {
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.setAttribute('readonly', '');
+  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.append(area);
+  area.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {}
+  area.remove();
+  return ok;
+}
 
 // ---------- индикаторы входа ----------
 const heard = $('heard');

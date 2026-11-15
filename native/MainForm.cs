@@ -285,7 +285,10 @@ internal sealed class MainForm : Form
         }
         catch (Exception ex)
         {
-            string msg = ex is InvalidOperationException or NotSupportedException or ArgumentException
+            // NAudio сообщает о неподключённом устройстве сухим текстом — объясняем, что делать
+            string msg = ex.Message.Contains("No device is connected", StringComparison.OrdinalIgnoreCase)
+                ? $"{driver}: the device isn't connected. Plug in the interface (and turn it on), or pick another driver."
+                : ex is InvalidOperationException or NotSupportedException or ArgumentException
                 ? ex.Message
                 : "The driver didn't open. Check that the interface is connected and not in use by another program (a DAW).";
             SendAudio($"{msg}");
