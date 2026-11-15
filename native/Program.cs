@@ -19,3 +19,16 @@ internal static class Program
         return 0;
     }
 }
+
+/// <summary>Иконка приложения для окон (шестиугольник с волной — как логотип в шапке).</summary>
+internal static class AppIcon
+{
+    private static Icon? icon;
+
+    public static Icon Get()
+    {
+        if (icon != null) return icon;
+        using Stream? s = typeof(AppIcon).Assembly.GetManifestResourceStream("PolyAmp.app.ico");
+        return icon = s != null ? new Icon(s) : SystemIcons.Application;
+    }
+}

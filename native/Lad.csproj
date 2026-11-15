@@ -25,6 +25,8 @@
     <DebugType>embedded</DebugType>
     <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- иконка exe (Проводник, панель задач, ярлыки); та же иконка встроена ресурсом для окон -->
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
     <!-- исходники сторонней библиотеки и её сборка — не часть проекта C# -->
     <DefaultItemExcludes>$(DefaultItemExcludes);third_party/**;namcore/**</DefaultItemExcludes>
@@ -33,6 +35,10 @@
   <ItemGroup>
     <PackageReference Include="NAudio.Asio" Version="2.2.1" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="app.ico" LogicalName="PolyAmp.app.ico" />
   </ItemGroup>
 
   <!-- Официальная библиотека NAM (собирается namcore/build.bat) в двух вариантах: с AVX2 и запасной без него.

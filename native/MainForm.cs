@@ -24,6 +24,7 @@ internal sealed class MainForm : Form
     public MainForm(string[] args)
     {
         Text = "Poly Amp";
+        Icon = AppIcon.Get();
         BackColor = Color.FromArgb(17, 18, 24); // фон тёмной темы — без белой вспышки при запуске
 
         ClientSize = new Size(1320, 880);

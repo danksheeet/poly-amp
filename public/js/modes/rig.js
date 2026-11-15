@@ -18,14 +18,14 @@ export function createRig(root, { engine, store, chain, t3k }) {
     <div class="rig">
       <div class="rig-top">
         <div class="rig-preset">
-          <button class="rb" data-ref="prev" aria-label="Previous preset">‹</button>
+          <button class="rb" data-ref="prev" aria-label="Previous preset" title="Previous preset (←)">‹</button>
           <div class="rig-name"><small data-ref="colName"></small><b data-ref="presetName"></b></div>
-          <button class="rb" data-ref="next" aria-label="Next preset">›</button>
+          <button class="rb" data-ref="next" aria-label="Next preset" title="Next preset (→)">›</button>
         </div>
         <div class="rig-actions">
           <span class="rig-dirty" data-ref="dirty" hidden>modified</span>
           <button class="rbtn" data-ref="revert" hidden title="Revert the preset to how it was">Revert</button>
-          <button class="rbtn" data-ref="save">Save</button>
+          <button class="rbtn" data-ref="save" title="Save the sound as your preset (Ctrl+S)">Save</button>
           <span class="rig-form" data-ref="form" hidden>
             <input class="text-input input-dark" data-ref="name" maxlength="40" placeholder="Preset name" spellcheck="false">
             <button class="rbtn rbtn-accent" data-ref="ok">Save</button>
@@ -344,14 +344,6 @@ export function createRig(root, { engine, store, chain, t3k }) {
     if (cpu !== lastCpu) ref.cpu.textContent = lastCpu = cpu;
   }
 
-  // пробел — проиграть или остановить сэмпл (если фокус не в поле ввода и не на кнопке)
-  document.addEventListener('keydown', (e) => {
-    if (!active || !native || e.code !== 'Space' || e.repeat) return;
-    if (e.target.closest('button, input, select, textarea, [role="slider"], .tile') || document.querySelector('.modal-backdrop:not([hidden])')) return;
-    e.preventDefault();
-    player.toggle();
-  });
-
   // ---------- старт ----------
   if (!findPreset(current) && current.user == null) current = DEFAULT_PRESET;
   if (current.user != null && !userPresets().some((p) => p.name === current.user)) current = DEFAULT_PRESET;
@@ -371,6 +363,27 @@ export function createRig(root, { engine, store, chain, t3k }) {
         off = null;
       }
       if (!on) board.closeMenu();
+    },
+    /** Горячие клавиши экрана (k — из app.js: 'space', 'left', 'ctrl+s'…). true — клавиша обработана. */
+    onKey(k, e) {
+      switch (k) {
+        case 'space':
+          if (!native) return false;
+          if (!e.repeat) player.toggle();
+          return true;
+        case 'b':
+          if (!native) return false;
+          if (!e.repeat) ref.player.querySelector('.sp-bypass').click();
+          return true;
+        case 'left':
+        case 'right':
+          if (!e.repeat) step(k === 'left' ? -1 : 1);
+          return true;
+        case 'ctrl+s':
+          openForm();
+          return true;
+      }
+      return false;
     },
     /** Для проверок и консоли. */
     apply,

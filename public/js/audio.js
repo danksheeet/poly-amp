@@ -24,6 +24,8 @@ class Engine {
     this.inputChannels = 1;
     this.channelMode = '1'; // '1' | '2' | 'mix'
     this.monitor = { on: false, tone: 'clean', volume: 0.8 };
+    this.masterDb = 0; // общая громкость (в браузере — мониторинг, синтезатор и клик)
+    this.masterMute = false;
     this.frame = { rms: 0, level: 0, freq: null, midi: null, clarity: 0, note: null };
     this.voices = [];
     this.buffers = new Map();
@@ -79,10 +81,15 @@ class Engine {
     this.chromaAnalyser.connect(sink);
     sink.connect(ctx.destination);
 
+    // мастер: всё, что слышно в колонках, идёт через него
+    this.master = ctx.createGain();
+    this.master.gain.value = this.masterGain();
+    this.master.connect(ctx.destination);
+
     // синтезатор: слышен в колонках и одновременно «слышен» приложению
     this.synthBus = ctx.createGain();
     this.synthBus.gain.value = 0.85;
-    this.synthBus.connect(ctx.destination);
+    this.synthBus.connect(this.master);
     this.synthBus.connect(this.inputBus);
 
     // вход: выбор канала интерфейса → моно
@@ -101,7 +108,7 @@ class Engine {
     // мониторинг: чистый звук или простой перегруз с «кабинетом»
     this.monOut = ctx.createGain();
     this.monOut.gain.value = 0;
-    this.monOut.connect(ctx.destination);
+    this.monOut.connect(this.master);
     this.cleanGain = ctx.createGain();
     this.micBus.connect(this.cleanGain);
     this.cleanGain.connect(this.monOut);
@@ -131,7 +138,7 @@ class Engine {
 
     this.clickBus = ctx.createGain();
     this.clickBus.gain.value = 0.5;
-    this.clickBus.connect(ctx.destination);
+    this.clickBus.connect(this.master);
 
     this.timeBuf = new Float32Array(this.analyser.fftSize);
     this.x = new Float32Array(4096);
@@ -270,7 +277,15 @@ class Engine {
   blockParam() {}
   blockOn() {}
   blockSize() {}
-  setGlobals() {}
+  /** Из общих уровней в браузере работает только мастер. */
+  setGlobals(p) {
+    if ('master.level' in p) this.masterDb = p['master.level'];
+    if ('master.mute' in p) this.masterMute = p['master.mute'] > 0.5;
+    if (this.master) this.master.gain.setTargetAtTime(this.masterGain(), this.ctx.currentTime, 0.015);
+  }
+  masterGain() {
+    return this.masterMute ? 0 : Math.pow(10, this.masterDb / 20);
+  }
   pickFile() {}
   t3kSelect() {}
   playSample() {}

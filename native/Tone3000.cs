@@ -312,6 +312,7 @@ internal sealed class Tone3000Window : Form
         this.env = env;
         this.startUrl = startUrl;
         Text = "TONE3000 — choose a tone";
+        Icon = AppIcon.Get();
         ClientSize = new Size(1180, 820);
         MinimumSize = new Size(720, 560);
         StartPosition = FormStartPosition.CenterParent;

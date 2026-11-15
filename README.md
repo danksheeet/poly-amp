@@ -124,6 +124,19 @@ The board shows **IN → blocks → OUT**, presets on the left and the selected 
 
 Without a guitar you can click the fretboard: the built-in synth plays the note and the app “hears” it.
 
+### Volume
+
+**Master** at the top of the window sets the volume of everything the app plays: guitar, metronome and tabs. The
+meter under it shows the output level, ▾ opens the mix (Master, Guitar, Metronome, Tabs), and **0** mutes everything.
+
+### Keyboard shortcuts
+
+Press **F1** (or the keyboard button at the top) for the full list. The main ones: **Space** play / pause,
+**Ctrl+1 / 2 / 3** switch between Play, Practice and Tabs, **T** tuner, **M** metronome, **− / +** slower / faster,
+**0** mute all sound.
+In Tabs: **← / →** a bar back / forward, **Home** back to start, **L** loop, **1 / 2 / 3** Listen, Play along,
+Wait for me. On Play: **← / →** previous / next preset. Shortcuts work with any keyboard layout.
+
 ### TONE3000
 
 Poly Amp uses the [TONE3000 API](https://www.tone3000.com/api) with your own TONE3000 account: you sign in in the app

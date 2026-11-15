@@ -40,6 +40,7 @@ internal sealed class SongsterrWindow : Form
         this.startUrl = startUrl;
         this.saveDir = saveDir;
         Text = "Songsterr — download Guitar Pro into your library";
+        Icon = AppIcon.Get();
         ClientSize = new Size(1240, 860);
         MinimumSize = new Size(760, 560);
         StartPosition = FormStartPosition.CenterParent;

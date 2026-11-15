@@ -30,6 +30,9 @@ internal sealed class AudioEngine : IDisposable
 
     private readonly Dictionary<string, Block> blocksById = new();
     private volatile float synthLevel = 0.8f; // громкость нот-подсказок и метронома
+    private volatile float masterDb; // общая громкость всего, что звучит на выходе: гитары, метронома, нот
+    private volatile bool masterMute;
+    private float masterGain = 1f, masterSmooth = 0.003f;
 
     private float inPeak, outPeak, cpu;
     private int lastBeatSeq;
@@ -116,6 +119,7 @@ internal sealed class AudioEngine : IDisposable
             ext.Driver.GetLatencies(out int inLat, out int outLat);
 
             sampleRate = sr;
+            masterSmooth = 1f - MathF.Exp(-1f / (0.015f * sr)); // мастер меняется плавно, без щелчков
             mono = new float[bufferSize]; ana = new float[bufferSize];
             outL = new float[bufferSize]; outR = new float[bufferSize]; aux = new float[bufferSize];
             chain.Prepare(sampleRate, bufferSize);
@@ -229,6 +233,8 @@ internal sealed class AudioEngine : IDisposable
             case "out.level": chain.OutLevelDb = value; break;
             case "out.mute": chain.Mute = value > 0.5f; break;
             case "synth.level": synthLevel = Math.Clamp(value, 0f, 1f); break;
+            case "master.level": masterDb = Math.Clamp(value, -60f, 6f); break;
+            case "master.mute": masterMute = value > 0.5f; break;
         }
     }
 
@@ -330,14 +336,19 @@ internal sealed class AudioEngine : IDisposable
 
             float op = 0;
             float sg = synthLevel;
+            // мастер — после сложения гитары и метронома, но до ограничителя: громче +0 дБ не хрипит, а мягко упирается
+            float mt = masterMute ? 0f : DspMath.Db(masterDb);
+            float mg = masterGain, mk = masterSmooth;
             for (int i = 0; i < n; i++)
             {
-                float l = DspMath.SoftLimit(outL[i] + s[i] * sg);
-                float r = DspMath.SoftLimit(outR[i] + s[i] * sg);
+                mg += (mt - mg) * mk;
+                float l = DspMath.SoftLimit((outL[i] + s[i] * sg) * mg);
+                float r = DspMath.SoftLimit((outR[i] + s[i] * sg) * mg);
                 outL[i] = l; outR[i] = r;
                 float a = MathF.Max(MathF.Abs(l), MathF.Abs(r));
                 if (a > op) op = a;
             }
+            masterGain = mg;
             if (ip > inPeak) inPeak = ip;
             if (op > outPeak) outPeak = op;
 

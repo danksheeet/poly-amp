@@ -508,7 +508,7 @@ main:has(> #view-play:not([hidden])) { max-width: 1440px; } /* в невысок
 .support-btn { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; padding: 7px 15px 7px 12px; }
 .support-btn svg { width: 15px; height: 15px; color: #f2668b; }
 .support-btn[aria-pressed="true"] { background: rgba(242, 102, 139, 0.14); border-color: rgba(242, 102, 139, 0.4); }
-@media (max-width: 1240px) {
+@media (max-width: 1400px) {
   .support-btn { padding: 7px 10px; }
   .support-btn span { display: none; }
 }
@@ -537,6 +537,127 @@ main:has(> #view-play:not([hidden])) { max-width: 1440px; } /* в невысок
 .sp-copy.is-done { color: var(--good); }
 .sp-foot { margin: 16px 0 0; color: var(--ink-3); font-size: 13.5px; }
 .sp-foot a { color: var(--accent-2); text-decoration: underline; text-underline-offset: 2px; }
+
+/* горячие клавиши: кнопка в шапке и окно со списком */
+.keys-btn { display: inline-flex; align-items: center; border-radius: 999px; padding: 7px 10px; color: var(--ink-2); }
+.keys-btn svg { width: 17px; height: 17px; }
+.keys-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent); }
+.modal.keys-modal { width: min(860px, 94vw); max-height: 92vh; overflow-y: auto; }
+.keys-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; }
+.keys-modal h3 { margin: 0 0 6px; color: var(--ink-3); font: 600 12px/1.3 var(--text); letter-spacing: 0.06em; text-transform: uppercase; }
+.keys-modal dl { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 7px 12px; align-items: center; margin: 0 0 18px; }
+.keys-modal dt { white-space: nowrap; color: var(--ink-3); font-size: 12px; }
+.keys-modal dd { margin: 0; color: var(--ink-2); font-size: 13.5px; line-height: 1.35; }
+.keys-modal kbd { min-width: 22px; }
+.keys-foot { margin: 0; color: var(--ink-3); font-size: 13px; line-height: 1.5; }
+html:not(.is-native) .native-only { display: none; }
+
+/* мастер-громкость в шапке и микшер под ней */
+.master {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px 3px 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  transition: border-color 0.15s;
+}
+.master.is-hot { border-color: color-mix(in srgb, var(--bad) 55%, transparent); }
+.ms-mute, .mix-mute {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  transition: background 0.15s, color 0.15s;
+}
+.ms-mute:hover, .mix-mute:hover { background: var(--fill); color: var(--ink); }
+.ms-mute svg, .mix-mute svg { width: 18px; height: 18px; }
+.ms-x { display: none; }
+.master.is-muted .ms-mute, .mix-mute[aria-pressed="true"] { background: var(--bad-soft); color: var(--bad); }
+.master.is-muted .ms-mute .ms-x, .mix-mute[aria-pressed="true"] .ms-x { display: inline; }
+.master.is-muted .ms-mute .ms-waves, .mix-mute[aria-pressed="true"] .ms-waves { display: none; }
+.ms-label { color: var(--ink-3); font: 650 11px/1 var(--text); letter-spacing: 0.07em; text-transform: uppercase; }
+.ms-track { display: flex; flex-direction: column; gap: 1px; width: 110px; }
+.ms-track input { width: 100%; }
+.master.is-muted .ms-track input { opacity: 0.45; }
+.ms-meter { display: block; height: 3px; margin: 0 2px; border-radius: 2px; background: var(--fill); overflow: hidden; }
+.ms-meter[hidden] { display: none; }
+.ms-meter i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--good) 0 62%, var(--warn) 85%, var(--bad));
+  clip-path: inset(0 100% 0 0);
+}
+.ms-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 66px;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: 600 13px/1 var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ms-open svg { width: 10px; height: 6px; color: var(--ink-3); transition: transform 0.15s; }
+.ms-open[aria-expanded="true"] svg { transform: rotate(180deg); }
+.ms-open:hover svg { color: var(--ink); }
+.master.is-muted #msVal { color: var(--bad); }
+.mix-pop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  width: 400px;
+  padding: 16px 18px 14px;
+  background: rgba(28, 29, 37, 0.98);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-pop);
+}
+.mix-head { margin-bottom: 8px; }
+.mix-head b { display: block; font: 620 17px/1.2 var(--display); }
+.mix-head small { display: block; margin-top: 3px; color: var(--ink-3); font-size: 12.5px; }
+.mix-row { display: grid; grid-template-columns: minmax(0, 1fr) 30px 130px 62px; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
+.mix-row:first-child b { color: var(--accent-2); }
+.mix-name b { display: block; font-weight: 600; font-size: 14px; }
+.mix-name small { display: block; color: var(--ink-3); font-size: 11.5px; }
+.mix-row input { width: 100%; }
+.mix-row output { text-align: right; color: var(--ink-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.mix-row.is-muted input { opacity: 0.45; }
+.mix-row.is-muted output { color: var(--bad); }
+.mix-note { margin: 6px 0 0; color: var(--ink-3); font-size: 12px; line-height: 1.45; }
+/* шапка в одну строку: чем уже окно, тем компактнее мастер, плашка звука и индикатор входа */
+@media (max-width: 1700px) {
+  .ms-label { display: none; }
+}
+@media (max-width: 1560px) {
+  .chip-drv { display: none; }
+}
+@media (max-width: 1400px) {
+  .ms-track { width: 84px; }
+  .meter { width: 64px; }
+}
+@media (max-width: 1240px) {
+  .ms-track { display: none; } /* ползунок остаётся в микшере */
+}
+/* на экране «Play» нет второй полосы вкладок — подпись Master помещается и в окне поуже */
+@media (min-width: 1241px) {
+  html[data-view="play"] .ms-label { display: inline; }
+}
+@media (max-width: 700px) {
+  .keys-grid { grid-template-columns: 1fr; }
+}
 
 .tuner-modal { width: min(740px, 94vw); }
 .tuner-modal .tuner { background: none; border: 0; box-shadow: none; padding: 0 0 4px; }

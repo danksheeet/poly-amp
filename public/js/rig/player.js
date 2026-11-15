@@ -24,7 +24,7 @@ export function createPlayer(host, { engine, store, rigRoot }) {
     </div>
     <div class="sp-progress" aria-hidden="true"><i data-ref="bar"></i></div>
     <button class="rbtn sp-bypass" data-ref="bypass" aria-pressed="false"
-      title="Turn off the whole chain and hear the dry signal — to compare">Bypass</button>`;
+      title="Turn off the whole chain and hear the dry signal — to compare (B)">Bypass</button>`;
   const ref = {};
   for (const n of host.querySelectorAll('[data-ref]')) ref[n.dataset.ref] = n;
 
@@ -130,6 +130,7 @@ export function createPlayer(host, { engine, store, rigRoot }) {
     engine.recStart();
   });
   ref.sel.addEventListener('change', () => {
+    ref.sel.blur(); // выбрал — фокус уходит, и пробел снова запускает сэмпл, а не открывает список
     const v = ref.sel.value;
     if (v === '__pick') {
       ref.sel.value = keyOf(sel);

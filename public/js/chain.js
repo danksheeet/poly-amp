@@ -2,12 +2,14 @@
 // Интерфейс меняет цепочку здесь, а модуль сам сообщает об этом движку и сохраняет её.
 import { BLOCKS, makeBlock } from './blocks.js';
 
-const GLOBAL_DEFAULTS = { 'in.gain': 0, 'out.level': -6, 'out.mute': 0, 'synth.level': 0.8 };
+const GLOBAL_DEFAULTS = { 'in.gain': 0, 'out.level': -6, 'out.mute': 0, 'synth.level': 0.8, 'master.level': 0, 'master.mute': 0 };
 export const GLOBALS = {
   'in.gain': { min: -12, max: 24 },
   'out.level': { min: -40, max: 6 },
   'out.mute': { min: 0, max: 1 },
   'synth.level': { min: 0, max: 1 },
+  'master.level': { min: -40, max: 6 }, // общая громкость: гитара, метроном, ноты и табы
+  'master.mute': { min: 0, max: 1 },
 };
 
 export function createChain(engine, store, initialBlocks) {
@@ -15,6 +17,7 @@ export function createChain(engine, store, initialBlocks) {
   // уровни из прежней версии (три гнезда) хранились вместе с ручками — переносим их при первом запуске
   const savedGlobals = store.get('rig.globals', null) || store.get('rig.state', null) || {};
   for (const [k, v] of Object.entries(savedGlobals)) if (k in globals && typeof v === 'number') globals[k] = v;
+  globals['master.mute'] = 0; // «выключить всё» — на минутку; при следующем запуске звук снова есть
   const saved = store.get('rig.chain', null);
   let blocks = (Array.isArray(saved) ? saved : initialBlocks)
     .filter((b) => b && BLOCKS[b.type])

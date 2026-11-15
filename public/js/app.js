@@ -29,7 +29,6 @@ const views = {
   chords: createChords($('view-chords'), deps),
   tabs: createTabs($('view-tabs'), deps),
 };
-const LEARN = ['notes', 'scales', 'chords', 'tabs'];
 const PRACTICE = ['notes', 'scales', 'chords']; // три упражнения на одной вкладке «Practice», между ними — переключатель
 const areaButtons = [...document.querySelectorAll('.area')];
 const tabs = [...document.querySelectorAll('#learnTabs .tab')];
@@ -63,16 +62,6 @@ for (const b of areaButtons) {
 }
 for (const t of tabs) t.addEventListener('click', () => show(t.dataset.tab === 'practice' ? store.get('practiceTab', 'notes') : t.dataset.tab));
 for (const b of exButtons) b.addEventListener('click', () => show(b.dataset.ex));
-
-document.addEventListener('keydown', (e) => {
-  if (e.code !== 'Space' || !LEARN.includes(current)) return;
-  if (e.target.closest('button, input, select, textarea, [role="slider"]')) return;
-  const btn = $('view-' + current).querySelector('[data-ref="start"]');
-  if (btn) {
-    e.preventDefault();
-    btn.click();
-  }
-});
 
 // ---------- тюнер: открывается поверх любой области ----------
 const tuner = createTuner($('tunerBody'), deps);
@@ -112,7 +101,9 @@ supportModal.addEventListener('click', async (e) => {
   const text = code.textContent.trim();
   // сначала синхронно, прямо внутри клика: так работает без запросов разрешений; потом — через буфер обмена браузера
   let ok = copyNow(text);
-  if (!ok && navigator.clipboard) {
+  // Буфер обмена браузера — только после настоящего клика: без него WebView2 спрашивает
+  // «Сайт lad.example хочет просматривать буфер обмена» (так бывает, когда кнопку нажимает скрипт).
+  if (!ok && navigator.clipboard && navigator.userActivation?.isActive !== false) {
     try {
       await Promise.race([navigator.clipboard.writeText(text), new Promise((_, fail) => setTimeout(fail, 1200))]);
       ok = true;
@@ -148,6 +139,215 @@ function copyNow(text) {
   return ok;
 }
 
+// ---------- мастер-громкость и микшер: в шапке, видны на всех экранах ----------
+const master = $('master');
+const msVol = $('msVol');
+const msMute = $('msMute');
+const msOpen = $('msOpen');
+const mixPop = $('mixPop');
+const dbText = (v) => {
+  const a = Math.abs(v);
+  return (v > 0 ? '+' : v < 0 ? '−' : '') + (a % 1 ? a.toFixed(1) : a) + ' dB';
+};
+// громкость табов живёт у табов (сохраняется в их настройках), остальное — общие уровни движка
+const MIX = [
+  { name: 'Master', hint: 'everything', level: 'master.level', mute: 'master.mute' },
+  { name: 'Guitar', hint: 'the sound chain', level: 'out.level', mute: 'out.mute', native: true },
+  { name: 'Metronome', hint: 'and reference notes', level: 'synth.level', scale: 100, native: true },
+  { name: 'Tabs', hint: 'the tab player', tabs: true },
+];
+const mixRows = [];
+for (const r of MIX) {
+  if (r.native && !isNative) continue;
+  const row = document.createElement('div');
+  row.className = 'mix-row';
+  const label = document.createElement('div');
+  label.className = 'mix-name';
+  label.innerHTML = `<b>${r.name}</b><small>${r.hint}</small>`;
+  const mute = document.createElement('button');
+  mute.className = 'mix-mute';
+  if (r.mute) {
+    mute.innerHTML = msMute.innerHTML;
+    mute.setAttribute('aria-label', 'Mute: ' + r.name);
+    mute.title = 'Mute: ' + r.name;
+    mute.addEventListener('click', () => chain.setGlobal(r.mute, chain.global(r.mute) > 0.5 ? 0 : 1, 'mix'));
+  } else {
+    // кнопки нет, но место в сетке остаётся — ползунки всех строк стоят ровно
+    mute.style.visibility = 'hidden';
+    mute.tabIndex = -1;
+    mute.setAttribute('aria-hidden', 'true');
+  }
+  const input = document.createElement('input');
+  input.type = 'range';
+  Object.assign(input, r.tabs || r.scale ? { min: 0, max: 100, step: r.tabs ? 5 : 1 } : { min: -40, max: 6, step: 0.5 });
+  input.setAttribute('aria-label', r.name + ' volume');
+  input.addEventListener('input', () => {
+    if (r.tabs) views.tabs.setVolume(+input.value);
+    else chain.setGlobal(r.level, r.scale ? input.value / r.scale : +input.value, 'mix');
+    syncMix();
+  });
+  const out = document.createElement('output');
+  row.append(label, mute, input, out);
+  $('mixRows').append(row);
+  mixRows.push({ r, row, mute, input, out });
+}
+function syncMix() {
+  for (const { r, row, mute, input, out } of mixRows) {
+    const v = r.tabs ? views.tabs.volume : chain.global(r.level) * (r.scale || 1);
+    const muted = !!r.mute && chain.global(r.mute) > 0.5;
+    input.value = v;
+    out.textContent = muted ? 'Muted' : r.tabs || r.scale ? Math.round(v) + ' %' : dbText(v);
+    row.classList.toggle('is-muted', muted);
+    mute.setAttribute('aria-pressed', muted);
+  }
+  const muted = chain.global('master.mute') > 0.5;
+  msVol.value = chain.global('master.level');
+  $('msVal').textContent = muted ? 'Muted' : dbText(chain.global('master.level'));
+  master.classList.toggle('is-muted', muted);
+  msMute.setAttribute('aria-pressed', muted);
+  msMute.title = (muted ? 'Turn the sound back on' : 'Mute all sound') + ' (0)';
+}
+msVol.addEventListener('input', () => {
+  chain.setGlobal('master.level', +msVol.value, 'master');
+  if (chain.global('master.mute') > 0.5) chain.setGlobal('master.mute', 0, 'master'); // повёл ползунок — значит, хочет слышать
+});
+msMute.addEventListener('click', toggleMasterMute);
+function toggleMasterMute() {
+  chain.setGlobal('master.mute', chain.global('master.mute') > 0.5 ? 0 : 1, 'master');
+}
+chain.on((what) => what === 'global' && syncMix());
+function setMix(open) {
+  mixPop.hidden = !open;
+  msOpen.setAttribute('aria-expanded', open);
+  if (open) syncMix(); // громкость табов могли поменять на их экране
+}
+msOpen.addEventListener('click', () => setMix(mixPop.hidden));
+document.addEventListener('pointerdown', (e) => !mixPop.hidden && !master.contains(e.target) && setMix(false));
+document.addEventListener('keydown', (e) => e.key === 'Escape' && !mixPop.hidden && setMix(false));
+$('msMeterBox').hidden = !isNative; // уровень выхода знает только движок приложения
+let outHold = 0;
+let clipUntil = 0;
+syncMix();
+
+// ---------- горячие клавиши ----------
+const keysModal = $('keysModal');
+function setKeys(open) {
+  keysModal.hidden = !open;
+  $('keysBtn').setAttribute('aria-pressed', open);
+}
+$('keysBtn').addEventListener('click', () => setKeys(keysModal.hidden));
+$('keysClose').addEventListener('click', () => setKeys(false));
+keysModal.addEventListener('pointerdown', (e) => e.target === keysModal && setKeys(false));
+document.addEventListener('keydown', (e) => e.key === 'Escape' && !keysModal.hidden && setKeys(false));
+
+// Клавишу узнаём по физической кнопке (e.code), а не по букве: на русской раскладке L — это «д».
+const CODES = { Space: 'space', ArrowLeft: 'left', ArrowRight: 'right', Home: 'home', F1: 'f1', Minus: '-', NumpadSubtract: '-', Equal: '+', NumpadAdd: '+', Comma: ',', Slash: '/' };
+const KEYS = { ' ': 'space', ArrowLeft: 'left', ArrowRight: 'right', Home: 'home', F1: 'f1', '-': '-', '+': '+', '=': '+', ',': ',', '/': '/' };
+function combo(e) {
+  if (e.altKey || e.metaKey) return null;
+  let k;
+  if (e.key === '?') k = '?'; // где бы «?» ни был на раскладке (на русской — Shift+7)
+  else if (e.code) k = CODES[e.code] || (/^Key[A-Z]$/.test(e.code) ? e.code.slice(3).toLowerCase() : /^(Digit|Numpad)\d$/.test(e.code) ? e.code.slice(-1) : null);
+  else k = KEYS[e.key] || (/^[a-z0-9]$/i.test(e.key) ? e.key.toLowerCase() : null); // без кода клавиши (экранная клавиатура) — по символу
+  if (k === '/') k = e.shiftKey ? '?' : null;
+  if (!k) return null;
+  return (e.ctrlKey ? 'ctrl+' : '') + k;
+}
+// Пришёл на кнопку клавишей Tab — пробел нажимает её. Кликнул мышью — пробел снова «Играть», а не повторный клик.
+let keyboardFocus = false;
+window.addEventListener('pointerdown', () => (keyboardFocus = false), true);
+const CONTROL = 'button, a[href], input, [role="slider"], [role="button"], [tabindex]:not([tabindex="-1"])';
+
+window.addEventListener(
+  'keydown',
+  (e) => {
+    if (e.key === 'Tab') keyboardFocus = true;
+    if (e.isComposing) return;
+    const k = combo(e);
+    if (!k) return;
+    const t = e.target instanceof Element ? e.target : document.body;
+    // в полях ввода клавиши — для текста
+    if (t.closest('textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+    if (t.matches('input') && !/^(range|checkbox|radio|button)$/.test(t.type)) return;
+    if (k === 'left' || k === 'right' || k === 'home') {
+      // ручки забирают стрелки всегда (иначе после поворота ручки стрелка сменит пресет и правка пропадёт);
+      // обычный ползунок — только если на него пришли с клавиатуры: подвинул мастер мышью — стрелки снова листают такты
+      if (t.closest('[role="slider"]')) return;
+      if (t.matches('input[type="range"]') && keyboardFocus) return;
+    }
+    if (k === 'space' && keyboardFocus && t !== document.body && t.closest(CONTROL)) return;
+    const modal = document.querySelector('.modal-backdrop:not([hidden])');
+    if (modal) {
+      // поверх открытого окна — только закрыть его той же клавишей
+      if (modal === tunerModal && k === 't') setTuner(false);
+      else if (modal === keysModal && (k === '?' || k === 'f1')) setKeys(false);
+      else return;
+    } else if (!globalKey(k, e) && !views[current].onKey?.(k, e)) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation(); // обработчики на самих кнопках и плитках этот пробел уже не получат
+  },
+  true
+);
+
+function globalKey(k, e) {
+  switch (k) {
+    case '?':
+    case 'f1':
+      setKeys(true);
+      return true;
+    case 't':
+      if (!e.repeat) setTuner(true);
+      return true;
+    case '0':
+      if (!e.repeat) toggleMasterMute();
+      return true;
+    case 'ctrl+1':
+      show('play');
+      return true;
+    case 'ctrl+2':
+      show(store.get('practiceTab', 'notes'));
+      return true;
+    case 'ctrl+3':
+      show('tabs');
+      return true;
+    case 'ctrl+,':
+      if (!settings) return false;
+      settings.open();
+      return true;
+    case 'g':
+      if (!isNative) return false;
+      if (!e.repeat) $('outMute').click();
+      return true;
+  }
+  if (PRACTICE.includes(current)) {
+    if (k === 'space') {
+      const btn = $('view-' + current).querySelector('[data-ref="start"]');
+      if (!btn) return false;
+      if (!e.repeat) btn.click();
+      return true;
+    }
+    if (k === '1' || k === '2' || k === '3') {
+      show(PRACTICE[k - 1]);
+      return true;
+    }
+  }
+  if (current === 'tabs') return false; // у табов свой клик метронома и своя скорость
+  switch (k) {
+    case 'm':
+      if (!e.repeat) mToggle.click();
+      return true;
+    case '-':
+      setBpm(metro.bpm - 5);
+      return true;
+    case '+':
+      setBpm(metro.bpm + 5);
+      return true;
+  }
+  return false;
+}
+
 // ---------- индикаторы входа ----------
 const heard = $('heard');
 const heardNote = $('heardNote');
@@ -162,17 +362,27 @@ engine.on('frame', (frame) => {
     heardNote.textContent = text;
     heard.classList.toggle('is-on', frame.note != null);
   }
+  // уровень выхода у мастера: шкала −48…0 дБ, у самого верха (ограничитель работает) — красная подсветка
+  const m = engine.meters;
+  if (isNative && m) {
+    outHold = Math.max(m.outPk, outHold * 0.86);
+    const pos = outHold > 1e-4 ? Math.max(0, Math.min(1, 1 + (20 * Math.log10(outHold)) / 48)) : 0;
+    $('msMeter').style.clipPath = `inset(0 ${((1 - pos) * 100).toFixed(1)}% 0 0)`;
+    if (m.outPk > 0.97) clipUntil = performance.now() + 1200;
+    master.classList.toggle('is-hot', performance.now() < clipUntil);
+  }
 });
 
 const notice = $('notice');
 const errorBox = $('error');
+let settings = null; // окно настроек звука — только в приложении
 
 if (isNative) setupNative();
 else setupWeb();
 
 // ---------- приложение: звук через ASIO ----------
 function setupNative() {
-  const settings = createSettings($('settings'), deps);
+  settings = createSettings($('settings'), deps);
   const chip = $('audioChip');
   const outGroup = $('outGroup');
   const outMute = $('outMute');
@@ -188,10 +398,13 @@ function setupNative() {
     const a = engine.audio;
     if (a.open) {
       const lat = ((a.inputLatency + a.outputLatency) / a.sampleRate) * 1000;
-      chip.innerHTML = `<i class="dot"></i>${a.driver} · ${(a.sampleRate / 1000).toString()} kHz · ${a.bufferSize} · ${lat.toFixed(1)} ms`;
+      // в узком окне название драйвера прячется (оно остаётся в подсказке)
+      chip.innerHTML = `<i class="dot"></i><span class="chip-drv">${a.driver} · </span>${(a.sampleRate / 1000).toString()} kHz · ${a.bufferSize} · ${lat.toFixed(1)} ms`;
+      chip.title = `${a.driver} — audio settings (Ctrl+,)`;
       chain.sync(); // движок перезапустился — напоминаем ему цепочку и уровни
     } else {
       chip.innerHTML = `<i class="dot off"></i>${a.error ? 'Audio error' : 'Audio off'} — set up`;
+      chip.title = 'Audio settings (Ctrl+,)';
     }
     chip.classList.toggle('is-error', !a.open);
     notice.hidden = a.open;
@@ -358,7 +571,10 @@ mToggle.addEventListener('click', () => {
 $('mMinus').addEventListener('click', () => setBpm(metro.bpm - 5));
 $('mPlus').addEventListener('click', () => setBpm(metro.bpm + 5));
 mRange.addEventListener('input', () => setBpm(+mRange.value));
-mSig.addEventListener('change', () => setBeats(+mSig.value));
+mSig.addEventListener('change', () => {
+  mSig.blur(); // выбрал размер — горячие клавиши снова работают
+  setBeats(+mSig.value);
+});
 $('mTap').addEventListener('click', () => {
   const bpm = metro.tap();
   if (bpm) setBpm(bpm);

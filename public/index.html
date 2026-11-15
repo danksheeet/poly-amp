@@ -19,21 +19,42 @@
     </div>
 
     <nav class="areas" aria-label="App areas">
-      <button class="area" data-area="play">Play</button>
+      <button class="area" data-area="play" title="Play (Ctrl+1)">Play</button>
       <button class="area" data-area="learn">Learn</button>
     </nav>
 
     <nav class="tabs" id="learnTabs" role="tablist" aria-label="Exercises" hidden>
-      <button class="tab" role="tab" data-tab="practice">Practice</button>
-      <button class="tab" role="tab" data-tab="tabs">Tabs</button>
+      <button class="tab" role="tab" data-tab="practice" title="Practice (Ctrl+2)">Practice</button>
+      <button class="tab" role="tab" data-tab="tabs" title="Tabs (Ctrl+3)">Tabs</button>
     </nav>
 
     <div class="input">
+      <button class="btn keys-btn" id="keysBtn" title="Keyboard shortcuts (F1)" aria-label="Keyboard shortcuts">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M6.5 10h1M10 10h1M13.5 10h1M17 10h.5M6.5 13.5h1M9.5 14h5M17 13.5h.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
       <button class="btn support-btn" id="supportBtn" title="Support Poly Amp">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2 0 3.6 1.1 5 3 1.4-1.9 3-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z" fill="currentColor"/></svg>
         <span>Support</span>
       </button>
-      <button class="btn tuner-btn" id="tunerBtn" title="Open the tuner">Tuner</button>
+      <button class="btn tuner-btn" id="tunerBtn" title="Open the tuner (T)">Tuner</button>
+      <div class="master" id="master">
+        <button class="ms-mute" id="msMute" aria-pressed="false" aria-label="Mute all sound" title="Mute all sound (0)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9.3h3.3L11.5 5.3v13.4l-4.7-4H3.5z" fill="currentColor"/><path class="ms-waves" d="M15 9.2a4 4 0 0 1 0 5.6M17.6 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path class="ms-x" d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <span class="ms-label">Master</span>
+        <div class="ms-track">
+          <input type="range" id="msVol" min="-40" max="6" step="0.5" value="0" aria-label="Master volume" title="Master volume: everything the app plays">
+          <i class="ms-meter" id="msMeterBox" aria-hidden="true" title="Output level"><i id="msMeter"></i></i>
+        </div>
+        <button class="ms-open" id="msOpen" aria-haspopup="true" aria-expanded="false" title="Mix: master, guitar, metronome and tabs">
+          <span id="msVal">0 dB</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="mix-pop" id="mixPop" role="dialog" aria-label="Mix" hidden>
+          <div class="mix-head"><b>Mix</b><small>Master sets the volume of everything the app plays.</small></div>
+          <div class="mix-rows" id="mixRows"></div>
+          <p class="mix-note native-only">Guitar and metronome play through your audio interface, tabs through the Windows default output.</p>
+        </div>
+      </div>
       <div class="heard" id="heard" title="The note the app hears right now">
         <span class="heard-label">hearing</span><span class="heard-note" id="heardNote">—</span>
       </div>
@@ -43,7 +64,7 @@
         <button data-v="1">Input 1</button><button data-v="2">Input 2</button><button data-v="mix">1+2</button>
       </div>
       <button id="connectBtn" class="btn btn-primary" hidden>Connect guitar</button>
-      <button id="audioChip" class="audio-chip" title="Audio settings" hidden></button>
+      <button id="audioChip" class="audio-chip" title="Audio settings (Ctrl+,)" hidden></button>
     </div>
   </header>
 
@@ -57,9 +78,9 @@
     <div class="notice notice-error" id="error" hidden></div>
 
     <nav class="ex-switch" id="practiceNav" aria-label="Practice exercises" hidden>
-      <button data-ex="notes"><b>Notes</b><small>find notes on the fretboard</small></button>
-      <button data-ex="scales"><b>Scales</b><small>positions and speed with a timer</small></button>
-      <button data-ex="chords"><b>Chords</b><small>clean, fast chord changes</small></button>
+      <button data-ex="notes" title="Notes (1)"><b>Notes</b><small>find notes on the fretboard</small></button>
+      <button data-ex="scales" title="Scales (2)"><b>Scales</b><small>positions and speed with a timer</small></button>
+      <button data-ex="chords" title="Chords (3)"><b>Chords</b><small>clean, fast chord changes</small></button>
     </nav>
 
     <section class="view" id="view-play" hidden></section>
@@ -72,11 +93,11 @@
   <footer class="dock">
     <div class="dock-group metro">
       <span class="dock-title">Metronome</span>
-      <button class="btn btn-round" id="mToggle" aria-label="Start the metronome">▶</button>
+      <button class="btn btn-round" id="mToggle" aria-label="Start the metronome" title="Start or stop (M)">▶</button>
       <div class="metro-beats" id="mBeats" aria-hidden="true"></div>
-      <button class="btn btn-ghost btn-sq" id="mMinus" aria-label="Slower">−</button>
+      <button class="btn btn-ghost btn-sq" id="mMinus" aria-label="Slower" title="Slower (−)">−</button>
       <div class="metro-bpm"><output id="mBpm">90</output><small>BPM</small></div>
-      <button class="btn btn-ghost btn-sq" id="mPlus" aria-label="Faster">+</button>
+      <button class="btn btn-ghost btn-sq" id="mPlus" aria-label="Faster" title="Faster (+)">+</button>
       <input type="range" id="mRange" min="40" max="220" value="90" aria-label="Tempo">
       <select id="mSig" class="select" aria-label="Time signature">
         <option value="2">2/4</option><option value="3">3/4</option><option value="4" selected>4/4</option><option value="6">6/8</option>
@@ -85,7 +106,7 @@
       <input type="range" id="mVol" min="0" max="100" value="80" title="Volume of the metronome and reference notes" aria-label="Metronome volume" hidden>
     </div>
     <div class="dock-group" id="outGroup" hidden>
-      <label class="switch" title="Guitar sound at the output">
+      <label class="switch" title="Guitar sound at the output (G)">
         <input type="checkbox" id="outMute" checked><span class="switch-ui"></span><span>Guitar sound</span>
       </label>
       <input type="range" id="outVol" min="-40" max="6" step="0.5" value="-6" aria-label="Guitar volume">
@@ -136,6 +157,63 @@
         <button class="btn btn-ghost sp-copy">Copy</button>
       </div>
       <p class="sp-foot">Found a bug or have an idea? <a href="#" data-link="https://github.com/danksheeet/poly-amp/issues">Tell us on GitHub</a>. Thank you!</p>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="keysModal" hidden>
+    <div class="modal keys-modal" role="dialog" aria-modal="true" aria-labelledby="keysTitle">
+      <header>
+        <h2 id="keysTitle">Keyboard shortcuts</h2>
+        <button class="btn btn-ghost btn-sq" id="keysClose" aria-label="Close">×</button>
+      </header>
+      <div class="keys-grid">
+        <section>
+          <h3>Everywhere</h3>
+          <dl>
+            <dt class="native-only"><kbd>Ctrl</kbd>+<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd class="native-only">Play, Practice, Tabs</dd>
+            <dt><kbd>T</kbd></dt><dd>Tuner</dd>
+            <dt><kbd>0</kbd></dt><dd>Mute all sound / back on</dd>
+            <dt><kbd>M</kbd></dt><dd>Metronome on / off</dd>
+            <dt><kbd>−</kbd> <kbd>+</kbd></dt><dd>Metronome slower / faster</dd>
+            <dt class="native-only"><kbd>G</kbd></dt><dd class="native-only">Guitar sound on / off</dd>
+            <dt class="native-only"><kbd>Ctrl</kbd>+<kbd>,</kbd></dt><dd class="native-only">Audio settings</dd>
+            <dt><kbd>F1</kbd> or <kbd>?</kbd></dt><dd>This list</dd>
+            <dt><kbd>Esc</kbd></dt><dd>Close a window</dd>
+          </dl>
+          <h3>Play</h3>
+          <dl>
+            <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous / next preset</dd>
+            <dt class="native-only"><kbd>Space</kbd></dt><dd class="native-only">Play / stop the sample</dd>
+            <dt class="native-only"><kbd>B</kbd></dt><dd class="native-only">Bypass: hear the dry signal</dd>
+            <dt><kbd>Ctrl</kbd>+<kbd>S</kbd></dt><dd>Save as your preset</dd>
+          </dl>
+          <h3>Practice</h3>
+          <dl>
+            <dt><kbd>Space</kbd></dt><dd>Start / stop</dd>
+            <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Notes, Scales, Chords</dd>
+          </dl>
+        </section>
+        <section>
+          <h3>Tabs</h3>
+          <dl>
+            <dt><kbd>Space</kbd></dt><dd>Play / pause</dd>
+            <dt><kbd>Home</kbd></dt><dd>Back to start</dd>
+            <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>A bar back / forward</dd>
+            <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Listen, Play along, Wait for me</dd>
+            <dt><kbd>S</kbd></dt><dd>Skip the note (Wait for me)</dd>
+            <dt><kbd>−</kbd> <kbd>+</kbd></dt><dd>Slower / faster</dd>
+            <dt><kbd>L</kbd></dt><dd>Loop</dd>
+            <dt><kbd>M</kbd></dt><dd>Metronome click</dd>
+            <dt><kbd>C</kbd></dt><dd>Count-in</dd>
+            <dt><kbd>F</kbd></dt><dd>Fretboard</dd>
+            <dt><kbd>N</kbd></dt><dd>Notation above the tab</dd>
+            <dt><kbd>Ctrl</kbd>+<kbd>−</kbd> <kbd>+</kbd></dt><dd>Smaller / larger</dd>
+            <dt><kbd>Ctrl</kbd>+<kbd>O</kbd></dt><dd>Open a file</dd>
+            <dt><kbd>Ctrl</kbd>+<kbd>V</kbd></dt><dd>Open a copied Songsterr link</dd>
+          </dl>
+        </section>
+      </div>
+      <p class="keys-foot">Shortcuts work with any keyboard layout. In Wait for me, <kbd>Space</kbd> plays the note you need to hit.</p>
     </div>
   </div>
 

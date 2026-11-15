@@ -120,7 +120,7 @@ function instrument(t) {
 /** Ссылка на страницу Songsterr в тексте (в том числе вставленном из буфера). */
 const SS_LINK = /https?:\/\/(?:www\.)?songsterr\.com\/[^\s"'<>]+/i;
 
-export function createTabs(root, { engine, store }) {
+export function createTabs(root, { engine, store, chain }) {
 
   root.innerHTML = `
     <div class="tb-shell">
@@ -128,39 +128,39 @@ export function createTabs(root, { engine, store }) {
     <div class="tb">
       <div class="tb-top">
         <button class="ib" data-ref="libBtn" aria-pressed="false" title="Library: tabs from your folder" aria-label="Library">${icon('library')}</button>
-        <button class="btn btn-primary tb-open" data-ref="open" title="Open a Guitar Pro or MusicXML file">${icon('folder')}<span>Open</span></button>
+        <button class="btn btn-primary tb-open" data-ref="open" title="Open a Guitar Pro or MusicXML file (Ctrl+O)">${icon('folder')}<span>Open</span></button>
         <input type="file" accept="${ACCEPT}" data-ref="input" hidden>
         <button class="ib" data-ref="recentBtn" title="Recent tabs" aria-label="Recent tabs" aria-haspopup="true">${icon('recent')}</button>
         <div class="tb-song"><b data-ref="title"></b><span data-ref="artist"></span></div>
         <button class="tb-trackbtn" data-ref="trackBtn" aria-haspopup="true" title="Tracks: which one to show and play, volume of the others" hidden></button>
         <div class="seg tb-modes" data-ref="mode" hidden>
-          <button data-v="listen" title="Just listen to the tab">${icon('listen')}<span>Listen</span></button>
-          <button data-v="along" title="The tab plays while the app listens to your guitar and marks hits">${icon('guitar')}<span>Play along</span></button>
-          <button data-v="wait" title="The cursor waits until you play the right note">${icon('wait')}<span>Wait for me</span></button>
+          <button data-v="listen" title="Just listen to the tab (1)">${icon('listen')}<span>Listen</span></button>
+          <button data-v="along" title="The tab plays while the app listens to your guitar and marks hits (2)">${icon('guitar')}<span>Play along</span></button>
+          <button data-v="wait" title="The cursor waits until you play the right note (3)">${icon('wait')}<span>Wait for me</span></button>
         </div>
         <button class="ib" data-ref="songsterr" hidden title="${engine.isNative ? 'Songsterr: find a song and download its Guitar Pro file straight into your library. Tip: copy a song link and press Ctrl+V here' : 'Find this song on Songsterr (opens in your browser)'}" aria-label="Songsterr">${icon(engine.isNative ? 'download' : 'external')}</button>
       </div>
 
       <div class="tb-transport" data-ref="transport" hidden>
-        <button class="ib" data-ref="rewind" title="Back to start" aria-label="Back to start">${icon('rewind')}</button>
+        <button class="ib" data-ref="rewind" title="Back to start (Home)" aria-label="Back to start">${icon('rewind')}</button>
         <button class="ib ib-play" data-ref="start" aria-label="Play" title="Play (Space)">${icon('play')}</button>
         <button class="ib ib-play" data-ref="hear" hidden title="Hear what to play (Space)" aria-label="Hear the note">${icon('note')}</button>
-        <button class="ib" data-ref="skip" hidden title="Skip the note" aria-label="Skip the note">${icon('skip')}</button>
+        <button class="ib" data-ref="skip" hidden title="Skip the note (S)" aria-label="Skip the note">${icon('skip')}</button>
         <div class="tb-time">
           <span data-ref="time">0:00</span>
-          <div class="tb-progress" data-ref="progress" title="Seek"><i data-ref="bar"></i></div>
+          <div class="tb-progress" data-ref="progress" title="Seek. ← / → — a bar back or forward"><i data-ref="bar"></i></div>
           <span data-ref="total">0:00</span>
         </div>
-        <button class="tb-chip" data-ref="speedBtn" title="Speed" aria-haspopup="true">${icon('speed')}<span data-ref="speedOut"></span></button>
-        <button class="ib" data-ref="loop" aria-pressed="false" title="Loop: repeat over and over. Select bars with the mouse to loop only them">${icon('loop')}</button>
-        <button class="ib" data-ref="metro" aria-pressed="false" title="Metronome click">${icon('metronome')}</button>
-        <button class="ib" data-ref="countIn" aria-pressed="false" title="Count-in bar before playback">${icon('countIn')}</button>
+        <button class="tb-chip" data-ref="speedBtn" title="Speed (− / +)" aria-haspopup="true">${icon('speed')}<span data-ref="speedOut"></span></button>
+        <button class="ib" data-ref="loop" aria-pressed="false" title="Loop: repeat over and over. Select bars with the mouse to loop only them (L)">${icon('loop')}</button>
+        <button class="ib" data-ref="metro" aria-pressed="false" title="Metronome click (M)">${icon('metronome')}</button>
+        <button class="ib" data-ref="countIn" aria-pressed="false" title="Count-in bar before playback (C)">${icon('countIn')}</button>
         <span class="tb-sep"></span>
         <button class="ib" data-ref="volBtn" title="Overall tab volume" aria-haspopup="true"></button>
-        <button class="ib" data-ref="profile" aria-pressed="false" title="Show notation above the tab" aria-label="Notation above the tab">${icon('staff')}</button>
-        <button class="ib" data-ref="zoomOut" title="Smaller" aria-label="Smaller">${icon('zoomOut')}</button>
-        <button class="ib" data-ref="zoomIn" title="Larger" aria-label="Larger">${icon('zoomIn')}</button>
-        <button class="ib" data-ref="fretBtn" aria-pressed="false" title="Fretboard with the notes that sound (or that you need to play)" aria-label="Fretboard">${icon('fretboard')}</button>
+        <button class="ib" data-ref="profile" aria-pressed="false" title="Show notation above the tab (N)" aria-label="Notation above the tab">${icon('staff')}</button>
+        <button class="ib" data-ref="zoomOut" title="Smaller (Ctrl+−)" aria-label="Smaller">${icon('zoomOut')}</button>
+        <button class="ib" data-ref="zoomIn" title="Larger (Ctrl++)" aria-label="Larger">${icon('zoomIn')}</button>
+        <button class="ib" data-ref="fretBtn" aria-pressed="false" title="Fretboard with the notes that sound (or that you need to play) (F)" aria-label="Fretboard">${icon('fretboard')}</button>
       </div>
 
       <div class="tb-status" data-ref="status" hidden>
@@ -363,10 +363,23 @@ export function createTabs(root, { engine, store }) {
     return 'Couldn’t show the tab: ' + msg;
   }
 
+  // мастер-громкость из шапки действует и на табы (они звучат через Windows, а не через ASIO)
+  const masterGain = () =>
+    !chain ? 1 : chain.global('master.mute') > 0.5 ? 0 : Math.min(2, Math.pow(10, chain.global('master.level') / 20));
+  chain?.on((what, d) => what === 'global' && d.name.startsWith('master.') && applyPlayer());
+  function setVolume(v) {
+    opts.volume = Math.max(0, Math.min(100, Math.round(v)));
+    saveOpts();
+    applyPlayer();
+    syncTransport();
+  }
+
   function applyPlayer() {
     if (!api) return;
-    api.playbackSpeed = opts.speed / 100;
-    api.masterVolume = opts.volume / 100;
+    // скорость — только если изменилась: alphaTab при каждой записи скорости перематывает на то же место,
+    // и звучащие ноты обрываются (громкость, петля и клик во время игры давали заикание)
+    if (Math.abs(api.playbackSpeed - opts.speed / 100) > 1e-6) api.playbackSpeed = opts.speed / 100;
+    api.masterVolume = (opts.volume / 100) * masterGain();
     api.isLooping = opts.loop;
     api.metronomeVolume = opts.metro ? 1 : 0;
     api.countInVolume = opts.countIn ? 1 : 0;
@@ -917,7 +930,7 @@ export function createTabs(root, { engine, store }) {
     for (const b of ref.mode.children) b.setAttribute('aria-pressed', b.dataset.v === opts.mode);
     ref.profile.setAttribute('aria-pressed', opts.profile === 'both');
     ref.profile.disabled = !!track && !hasTab(track);
-    ref.profile.title = ref.profile.disabled ? 'This track has no tablature — it’s shown as notation' : 'Show notation above the tab';
+    ref.profile.title = ref.profile.disabled ? 'This track has no tablature — it’s shown as notation' : 'Show notation above the tab (N)';
   }
 
   function setMode(m) {
@@ -1007,7 +1020,8 @@ export function createTabs(root, { engine, store }) {
     api.stop();
     marks.clear();
     resetStats();
-    if (opts.mode === 'wait') startWait();
+    // стоп доходит до плеера не сразу и позиция ещё старая — ищем первую ноту от самого начала
+    if (opts.mode === 'wait') setWait(playableFrom(0, true));
     drawMarks();
   });
   ref.hear.addEventListener('click', () => waitCur && api.playBeat(waitCur.exp.beat));
@@ -1019,20 +1033,46 @@ export function createTabs(root, { engine, store }) {
     if (opts.mode === 'wait') setTimeout(startWait, 60);
   });
 
+  function setSpeed(v) {
+    opts.speed = Math.max(25, Math.min(125, v));
+    saveOpts();
+    applyPlayer();
+    syncTransport();
+    if (popFor !== ref.speedBtn) return;
+    const slider = ref.pop.querySelector('input[type="range"]');
+    if (slider) slider.value = opts.speed;
+    for (const c of ref.pop.querySelectorAll('.chip')) c.setAttribute('aria-pressed', +c.dataset.v === opts.speed);
+  }
+  function stepSpeed(dir) {
+    const next = dir > 0 ? SPEEDS.find((s) => s > opts.speed) : SPEEDS.findLast((s) => s < opts.speed);
+    if (next != null) setSpeed(next);
+  }
+
+  // на такт назад или вперёд; «назад» в начале такта — на предыдущий такт, дальше — в начало текущего
+  function stepBar(dir) {
+    const bars = api?.tickCache?.masterBars;
+    if (!ready || !bars?.length) return;
+    const tick = opts.mode === 'wait' && waitCur ? waitCur.r.start : api.tickPosition;
+    let i = bars.findIndex((b) => tick < b.end);
+    if (i < 0) i = bars.length - 1;
+    const b = bars[i];
+    let to;
+    if (dir > 0) {
+      if (i + 1 >= bars.length) return;
+      to = bars[i + 1].start;
+    } else {
+      to = tick - b.start > (b.end - b.start) / 4 ? b.start : bars[Math.max(0, i - 1)].start;
+    }
+    if (opts.mode === 'wait') setWait(playableFrom(to, true));
+    else api.tickPosition = to;
+  }
+
   ref.speedBtn.addEventListener('click', () =>
     openPop(ref.speedBtn, (box) => {
       box.classList.add('tb-speed-pop');
       box.append(el('div', 'tb-pop-head', 'Speed'));
       const chips = el('div', 'chips');
       const slider = el('input');
-      const setSpeed = (v) => {
-        opts.speed = v;
-        saveOpts();
-        applyPlayer();
-        syncTransport();
-        slider.value = v;
-        for (const c of chips.children) c.setAttribute('aria-pressed', +c.dataset.v === v);
-      };
       for (const v of SPEEDS) {
         const c = el('button', 'chip', v + ' %');
         c.dataset.v = v;
@@ -1181,12 +1221,68 @@ export function createTabs(root, { engine, store }) {
       ensureApi().catch(() => {});
     },
     /** Для проверок. */
+    /** Горячие клавиши экрана (k — из app.js: 'space', 'left', 'ctrl+o'…). true — клавиша обработана. */
+    onKey(k, e) {
+      if (k === 'ctrl+o') {
+        ref.input.click();
+        return true;
+      }
+      if (k === 'ctrl+-' || k === 'ctrl++') {
+        if (!e.repeat) setZoom(k === 'ctrl++' ? 1 : -1); // каждый шаг заново рисует таб — повтор не нужен
+        return true;
+      }
+      if (!score) return false;
+      switch (k) {
+        case 'space':
+          if (!e.repeat) ref.start.click();
+          return true;
+        case 'home':
+          ref.rewind.click();
+          return true;
+        case 'left':
+        case 'right':
+          stepBar(k === 'left' ? -1 : 1);
+          return true;
+        case '1':
+        case '2':
+        case '3': {
+          const m = ['listen', 'along', 'wait'][k - 1];
+          if (m !== opts.mode) setMode(m);
+          return true;
+        }
+        case 's':
+          if (opts.mode !== 'wait') return false;
+          if (!e.repeat) ref.skip.click();
+          return true;
+        case '-':
+        case '+':
+          stepSpeed(k === '+' ? 1 : -1);
+          return true;
+        case 'l':
+        case 'm':
+        case 'c':
+          if (!e.repeat) ref[{ l: 'loop', m: 'metro', c: 'countIn' }[k]].click();
+          return true;
+        case 'f':
+          if (!e.repeat) ref.fretBtn.click();
+          return true;
+        case 'n':
+          if (!e.repeat) ref.profile.click(); // у дорожки без табулатуры кнопка выключена — click() ничего не сделает
+          return true;
+      }
+      return false;
+    },
     get api() {
       return api;
     },
     get mix() {
       return mix;
     },
+    /** Громкость табов, 0–100 % (для микшера в шапке). */
+    get volume() {
+      return opts.volume;
+    },
+    setVolume,
     openBytes,
     openDemo,
     openFromLibrary,
