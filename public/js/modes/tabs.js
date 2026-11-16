@@ -294,7 +294,8 @@ export function createTabs(root, { engine, store, chain }) {
     }
     const base = new URL(VENDOR, location.href).href;
     api = new AT.AlphaTabApi(ref.at, {
-      core: { fontDirectory: base + 'font/', scriptFile: base + 'alphaTab.js' },
+      // includeNoteBounds: границы каждой ноты — по ним подсвечиваются попадания и промахи
+      core: { fontDirectory: base + 'font/', scriptFile: base + 'alphaTab.js', includeNoteBounds: true },
       display: {
         staveProfile: profileValue(),
         scale: opts.zoom,
@@ -750,8 +751,40 @@ export function createTabs(root, { engine, store, chain }) {
   }
 
   // ---------- отметки на табе ----------
+  // Попадание, промах и нота, которую ждём, перекрашивают сами цифры на табе (они — <text> в SVG alphaTab).
+  // Цифру находим по границам ноты; без цифры (ноты на нотном стане) остаются прежние точка и рамка.
+  const DIGIT = {
+    hit: { fill: '#3fd39a', glow: 'drop-shadow(0 0 3px rgba(63, 211, 154, 0.75))' },
+    miss: { fill: '#ef6a6a', glow: 'drop-shadow(0 0 3px rgba(239, 106, 106, 0.7))' },
+    cur: { fill: '#a6a8ff', glow: 'drop-shadow(0 0 4px rgba(124, 127, 242, 0.95))' },
+  };
+  let digits = null; // [{ el, cx, cy }] цифр табулатуры в координатах листа; сбрасывается при перерисовке
+  const painted = new Set();
+  function digitIndex() {
+    if (digits) return digits;
+    const base = ref.at.getBoundingClientRect();
+    digits = [];
+    for (const t of ref.at.querySelectorAll('svg text')) {
+      if (!t.textContent.trim()) continue;
+      const r = t.getBoundingClientRect();
+      digits.push({ el: t, cx: r.left - base.left + r.width / 2, cy: r.top - base.top + r.height / 2 });
+    }
+    return digits;
+  }
+  // alphaTab дорисовывает части листа по мере прокрутки — тогда пересобираем список цифр и красим заново
+  let markRaf = 0;
+  new MutationObserver(() => {
+    digits = null;
+    if (marks.size || waitCur) {
+      cancelAnimationFrame(markRaf);
+      markRaf = requestAnimationFrame(drawMarks);
+    }
+  }).observe(ref.at, { childList: true, subtree: true });
+
   function drawMarks() {
     ref.marks.replaceChildren();
+    for (const t of painted) t.style.removeProperty('fill'), t.style.removeProperty('filter');
+    painted.clear();
     const bl = api?.boundsLookup;
     if (!bl) return;
     for (const [beat, kind] of marks) placeMark(bl, beat, kind);
@@ -760,14 +793,23 @@ export function createTabs(root, { engine, store, chain }) {
   function placeMark(bl, beat, kind) {
     const b = bl.findBeat(beat);
     if (!b) return;
+    const heads = (b.notes || []).map((n) => n.noteHeadBounds).filter((r) => r && r.w > 0 && r.h > 0);
+    let found = 0;
+    if (heads.length) {
+      const style = DIGIT[kind];
+      for (const d of digitIndex()) {
+        if (!heads.some((r) => d.cx >= r.x - 2 && d.cx <= r.x + r.w + 2 && d.cy >= r.y - 3 && d.cy <= r.y + r.h + 3)) continue;
+        d.el.style.setProperty('fill', style.fill);
+        d.el.style.setProperty('filter', style.glow);
+        painted.add(d.el);
+        found++;
+      }
+    }
+    if (found) return;
     const v = b.visualBounds;
     const m = el('i', 'tb-mark ' + kind);
-    if (kind === 'cur') {
-      Object.assign(m.style, { left: v.x - 4 + 'px', top: v.y - 4 + 'px', width: v.w + 8 + 'px', height: v.h + 8 + 'px' });
-    } else {
-      m.style.left = v.x + v.w / 2 + 'px';
-      m.style.top = v.y - 10 + 'px';
-    }
+    if (kind === 'cur') Object.assign(m.style, { left: v.x - 4 + 'px', top: v.y - 4 + 'px', width: v.w + 8 + 'px', height: v.h + 8 + 'px' });
+    else Object.assign(m.style, { left: v.x + v.w / 2 + 'px', top: v.y - 10 + 'px' });
     ref.marks.append(m);
   }
   function mark(beat, kind) {
@@ -935,6 +977,7 @@ export function createTabs(root, { engine, store, chain }) {
   // ---------- управление ----------
   function syncTransport() {
     const wait = opts.mode === 'wait';
+    tb.classList.toggle('is-wait', wait); // в «Жди меня» нужную ноту показывает рамка — линия курсора её только перечёркивает
     ref.start.hidden = wait;
     ref.hear.hidden = !wait;
     ref.skip.hidden = !wait;

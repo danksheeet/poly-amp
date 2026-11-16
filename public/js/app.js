@@ -224,8 +224,6 @@ function setMix(open) {
 msOpen.addEventListener('click', () => setMix(mixPop.hidden));
 document.addEventListener('pointerdown', (e) => !mixPop.hidden && !master.contains(e.target) && setMix(false));
 document.addEventListener('keydown', (e) => e.key === 'Escape' && !mixPop.hidden && setMix(false));
-$('msMeterBox').hidden = !isNative; // уровень выхода знает только движок приложения
-let outHold = 0;
 let clipUntil = 0;
 syncMix();
 
@@ -362,12 +360,9 @@ engine.on('frame', (frame) => {
     heardNote.textContent = text;
     heard.classList.toggle('is-on', frame.note != null);
   }
-  // уровень выхода у мастера: шкала −48…0 дБ, у самого верха (ограничитель работает) — красная подсветка
+  // выход у самого верха (работает ограничитель) — мастер подсвечивается красным
   const m = engine.meters;
   if (isNative && m) {
-    outHold = Math.max(m.outPk, outHold * 0.86);
-    const pos = outHold > 1e-4 ? Math.max(0, Math.min(1, 1 + (20 * Math.log10(outHold)) / 48)) : 0;
-    $('msMeter').style.clipPath = `inset(0 ${((1 - pos) * 100).toFixed(1)}% 0 0)`;
     if (m.outPk > 0.97) clipUntil = performance.now() + 1200;
     master.classList.toggle('is-hot', performance.now() < clipUntil);
   }

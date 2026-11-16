@@ -587,14 +587,6 @@ html:not(.is-native) .native-only { display: none; }
 .ms-track { display: flex; flex-direction: column; gap: 1px; width: 110px; }
 .ms-track input { width: 100%; }
 .master.is-muted .ms-track input { opacity: 0.45; }
-.ms-meter { display: block; height: 3px; margin: 0 2px; border-radius: 2px; background: var(--fill); overflow: hidden; }
-.ms-meter[hidden] { display: none; }
-.ms-meter i {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--good) 0 62%, var(--warn) 85%, var(--bad));
-  clip-path: inset(0 100% 0 0);
-}
 .ms-open {
   display: inline-flex;
   align-items: center;
@@ -889,6 +881,7 @@ html:not(.is-native) .native-only { display: none; }
 /* курсор и подсветка alphaTab в цветах приложения */
 .tb-at .at-cursor-bar { background: color-mix(in srgb, var(--accent) 9%, transparent); }
 .tb-at .at-cursor-beat { background: var(--accent); width: 3px; opacity: 0.8; }
+.tb.is-wait .tb-at .at-cursor-beat { opacity: 0; }
 .tb-at .at-selection div { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .tb-at .at-highlight * { fill: var(--accent); stroke: var(--accent); }
 
