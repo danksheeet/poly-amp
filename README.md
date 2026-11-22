@@ -26,8 +26,8 @@ shows what you hit and what you missed.
   fretboard.
 - 👂 **It actually listens.** *Play along* marks every hit and miss. *Wait for me* stops until you play the right note.
   No more faking your way through the hard bars.
-- 🎯 **Skills, not just songs.** Find notes on the fretboard, run scales against the clock, drill chord changes. No
-  buttons to press, just play.
+- 🎯 **Skills, not just songs.** Find notes on the fretboard, run scales against the clock, drill chord changes, or
+  play arcade games you control with your guitar. No buttons to press, just play.
 - 🆓 **Free. For real.** No subscription, no ads, no account needed to play. Open source.
 
 | Your guitar through real amps and pedals | Scales and chords that listen |
@@ -110,11 +110,19 @@ middle (top to bottom: IN, the chain, OUT) and the selected slot's window with i
   to add one.
 - **Bypass** (or **B**) turns the whole chain off so you can compare with the dry guitar.
 
-### Learn: practice and tabs
+### Learn: practice, games and tabs
 
 - **Practice** has three exercises: **Notes** (find the note on the given string, 20 per round), **Scales**
   (pentatonics, blues, major, minor and a chromatic exercise, with tab and a timer) and **Chords** (14 open chords and
   progressions, timed changes).
+- **Games** are arcade rounds you play with the guitar itself, three lives each, with levels that speed up and a
+  best score:
+  - **Fret Rain**: drops fall onto the frets, their color is the string; play the note to burst a drop before it lands.
+    Pick the strings and frets, and whether drops show fret numbers or note names.
+  - **Glide**: the glider's height is how loud you play. Dig in to climb, play softer to dive, let a note ring to hold
+    the height and fly through the gates. One hard strum before the start sets your range.
+  - **Chord Wall**: walls with chords roll toward you; strum the chord to break the front wall. Choose the chords and
+    whether the shapes are shown.
 - **Tabs** opens Guitar Pro (.gp, .gpx, .gp5, .gp4, .gp3) and MusicXML files with **Open**, drag and drop, or the
   **Library**: choose a folder and every tab file in it and its subfolders appears, grouped and searchable (the app
   only reads tab files there). **Tracks** sets which track to show and play plus volume, mute and solo for each track;
@@ -126,7 +134,8 @@ middle (top to bottom: IN, the chain, OUT) and the selected slot's window with i
   (a free account works); then press their download button and choose **Guitar Pro**. The file lands in your library
   folder (subfolder `Songsterr`) and opens.
 
-Without a guitar you can click the fretboard: the built-in synth plays the note and the app “hears” it.
+Without a guitar you can click the fretboard: the built-in synth plays the note and the app “hears” it. In the games,
+click the fretboard (Fret Rain), hold the mouse button (Glide) or click a wall (Chord Wall).
 
 ### Volume
 
@@ -136,8 +145,8 @@ meter under it shows the output level, ▾ opens the mix (Master, Guitar, Metron
 ### Keyboard shortcuts
 
 Press **F1** (or the keyboard button at the top) for the full list. The main ones: **Space** play / pause,
-**Ctrl+1 / 2 / 3** switch between Play, Practice and Tabs, **T** tuner, **M** metronome, **− / +** slower / faster,
-**0** mute all sound.
+**Ctrl+1 / 2 / 3 / 4** switch between Play, Practice, Tabs and Games, **T** tuner, **M** metronome, **− / +** slower /
+faster, **0** mute all sound. In Practice and Games, **Space** starts and stops and **1 / 2 / 3** pick the exercise or game.
 In Tabs: **← / →** a bar back / forward, **Home** back to start, **L** loop, **1 / 2 / 3** Listen, Play along,
 Wait for me. On Play: **B** bypass, **↑ / ↓** previous / next slot, **Delete** removes the selected slot. Shortcuts
 work with any keyboard layout.
@@ -240,6 +249,7 @@ native/                 the app: .NET 10, WinForms + WebView2, NAudio ASIO
   third_party/          NeuralAmpModelerCore (with Eigen) and the VST3 SDK (git submodules)
 public/                 the UI (HTML/CSS/JS, no build step), shared by the app and the web version
   js/modes/             Play (rig.js), exercises, tabs (tabs.js) and the tab library (tablib.js)
+  js/games/             the Games tab: Fret Rain, Glide, Chord Wall and their shared shell
   js/rig/               browser, channel slots, block window, TONE3000 tones (js/blocks.js: block types, starting chain)
   vendor/alphatab/      alphaTab with three small fixes (see PATCHES.md), notation font, sound bank
 licenses/               license texts of third-party components (copied into every build)

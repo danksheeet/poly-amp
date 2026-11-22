@@ -391,6 +391,7 @@ main:has(> #view-play:not([hidden])) { max-width: 1440px; } /* в невысок
 .feedback.bad { color: var(--bad); }
 
 .hint { color: var(--ink-3); font-size: 13px; margin: 12px 4px 0; }
+.game-hint { flex-basis: 100%; margin: 0; }
 
 /* ---------- гриф ---------- */
 
@@ -697,13 +698,26 @@ html[data-view="tabs"] .metro-top { display: none; } /* у табов свой �
 /* на экране Play вход показывает сам канал — в шапке он лишний */
 html[data-view="play"] .heard, html[data-view="play"] .input > .meter { display: none; }
 /* в упражнениях слышимую ноту показывает «hearing», полоска уровня рядом не нужна */
-html[data-view="notes"] .input > .meter, html[data-view="scales"] .input > .meter, html[data-view="chords"] .input > .meter { display: none; }
+html[data-view="notes"] .input > .meter, html[data-view="scales"] .input > .meter, html[data-view="chords"] .input > .meter,
+html[data-view="rain"] .input > .meter, html[data-view="glide"] .input > .meter, html[data-view="walls"] .input > .meter { display: none; }
 /* шапка в одну строку: чем уже окно, тем компактнее мастер, плашка звука и индикатор входа */
 @media (max-width: 1700px) {
   .ms-label { display: none; }
 }
 @media (max-width: 1700px) {
   .chip-drv { display: none; }
+}
+/* в «Learn» три вкладки: в окне поуже вкладки плотнее, а у «hearing» остаётся только сама нота */
+@media (max-width: 1700px) {
+  .tab { padding: 8px 13px; }
+  .heard { min-width: 0; }
+  .heard-label { display: none; }
+}
+@media (max-width: 1560px) {
+  .ms-track { width: 84px; }
+}
+@media (max-width: 1440px) {
+  .tab { padding: 8px 11px; }
 }
 @media (max-width: 1400px) {
   .ms-track { width: 84px; }
@@ -744,6 +758,59 @@ html[data-view="notes"] .input > .meter, html[data-view="scales"] .input > .mete
 .tab-cell.label::before { display: none; }
 .tab-cell.is-done span { color: var(--good); }
 .tab-cell.is-cur span { background: var(--accent); color: #fff; }
+
+/* ---------- мини-игры: строка счёта, сцена-холст, экран «как играть» и короткие подсказки ---------- */
+.game { overflow: hidden; border-radius: var(--r-xl); border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow-card); }
+.game-hud { display: flex; align-items: center; gap: 12px 28px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.hud { display: flex; flex-direction: column; min-width: 54px; line-height: 1.15; }
+.hud b { font: 650 22px/1.2 var(--display); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.hud small { color: var(--ink-3); font-size: 12px; }
+.hud-lives b { color: var(--bad); letter-spacing: 0.08em; }
+.hud-lives b.is-low { animation: lives-pulse 0.9s ease-in-out infinite; }
+@keyframes lives-pulse { 50% { opacity: 0.4; } }
+.hud-sp { flex: 1; }
+.game-stage {
+  position: relative;
+  height: clamp(320px, calc(100vh - 400px), 560px);
+  background: radial-gradient(80% 60% at 50% 0%, rgba(106, 108, 240, 0.08), transparent 70%), #14151c;
+}
+.game-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.game-overlay {
+  position: absolute;
+  inset: 0 0 auto;
+  bottom: 40%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  pointer-events: none; /* щелчки по грифу проходят насквозь: без гитары можно пробовать ноты и до старта */
+}
+.game-overlay[hidden] { display: none; }
+.go-kicker { color: var(--accent-2); font-size: 13px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; }
+.go-title { font: 650 30px/1.2 var(--display); letter-spacing: -0.02em; }
+.go-sub { max-width: 600px; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+.game-toast {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: rgba(32, 33, 42, 0.92);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, -6px);
+  transition: opacity 0.15s, transform 0.15s;
+  pointer-events: none;
+}
+.game-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+.game-toast.good { color: var(--good); }
+.game-toast.bad { color: #ff9a9e; }
 
 /* ---------- аккорды ---------- */
 

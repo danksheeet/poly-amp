@@ -12,6 +12,9 @@ import { createNotes } from './modes/notes.js';
 import { createScales } from './modes/scales.js';
 import { createChords } from './modes/chords.js';
 import { createTabs } from './modes/tabs.js';
+import { createRain } from './games/rain.js';
+import { createGlide } from './games/glide.js';
+import { createWalls } from './games/walls.js';
 
 const $ = (id) => document.getElementById(id);
 document.documentElement.classList.toggle('is-native', isNative);
@@ -28,11 +31,15 @@ const views = {
   scales: createScales($('view-scales'), deps),
   chords: createChords($('view-chords'), deps),
   tabs: createTabs($('view-tabs'), deps),
+  rain: createRain($('view-rain'), deps),
+  glide: createGlide($('view-glide'), deps),
+  walls: createWalls($('view-walls'), deps),
 };
 const PRACTICE = ['notes', 'scales', 'chords']; // три упражнения на одной вкладке «Practice», между ними — переключатель
+const GAMES = ['rain', 'glide', 'walls']; // мини-игры на вкладке «Games», переключатель такой же
 const areaButtons = [...document.querySelectorAll('.area')];
 const tabs = [...document.querySelectorAll('#learnTabs .tab')];
-const exButtons = [...document.querySelectorAll('#practiceNav button')];
+const exButtons = [...document.querySelectorAll('#practiceNav button, #gamesNav button')];
 let current = null;
 
 function show(id) {
@@ -44,15 +51,21 @@ function show(id) {
   const area = id === 'play' ? 'play' : 'learn';
   for (const b of areaButtons) b.setAttribute('aria-pressed', b.dataset.area === area);
   const isPractice = PRACTICE.includes(id);
-  for (const t of tabs) t.setAttribute('aria-selected', t.dataset.tab === (isPractice ? 'practice' : id));
+  const isGame = GAMES.includes(id);
+  for (const t of tabs) t.setAttribute('aria-selected', t.dataset.tab === (isPractice ? 'practice' : isGame ? 'games' : id));
   $('learnTabs').hidden = area !== 'learn';
   $('practiceNav').hidden = !isPractice;
+  $('gamesNav').hidden = !isGame;
   for (const b of exButtons) b.setAttribute('aria-pressed', b.dataset.ex === id);
   if (isPractice) store.set('practiceTab', id);
+  if (isGame) store.set('gamesTab', id);
+  // сначала выключаем остальные экраны, потом включаем нужный: так общий спектр для аккордов,
+  // который нужен и упражнению Chords, и игре Chord Wall, не выключится соседом
   for (const k in views) {
     $('view-' + k).hidden = k !== id;
-    views[k].setActive(k === id);
+    if (k !== id) views[k].setActive(false);
   }
+  views[id].setActive(true);
   $('heard').hidden = id === 'chords' || id === 'tabs'; // у аккордов и табов свой индикатор
   store.set('view', id);
   if (area === 'learn') store.set('learnTab', id);
@@ -60,7 +73,8 @@ function show(id) {
 for (const b of areaButtons) {
   b.addEventListener('click', () => show(b.dataset.area === 'play' ? 'play' : store.get('learnTab', 'notes')));
 }
-for (const t of tabs) t.addEventListener('click', () => show(t.dataset.tab === 'practice' ? store.get('practiceTab', 'notes') : t.dataset.tab));
+const tabView = (tab) => (tab === 'practice' ? store.get('practiceTab', 'notes') : tab === 'games' ? store.get('gamesTab', GAMES[0]) : tab);
+for (const t of tabs) t.addEventListener('click', () => show(tabView(t.dataset.tab)));
 for (const b of exButtons) b.addEventListener('click', () => show(b.dataset.ex));
 
 // ---------- тюнер: открывается поверх любой области ----------
@@ -310,6 +324,9 @@ function globalKey(k, e) {
     case 'ctrl+3':
       show('tabs');
       return true;
+    case 'ctrl+4':
+      show(store.get('gamesTab', GAMES[0]));
+      return true;
     case 'ctrl+,':
       if (!settings) return false;
       settings.open();
@@ -319,15 +336,16 @@ function globalKey(k, e) {
       if (!e.repeat) chain.setGlobal('out.mute', chain.global('out.mute') > 0.5 ? 0 : 1, 'key');
       return true;
   }
-  if (PRACTICE.includes(current)) {
+  const group = PRACTICE.includes(current) ? PRACTICE : GAMES.includes(current) ? GAMES : null;
+  if (group) {
     if (k === 'space') {
       const btn = $('view-' + current).querySelector('[data-ref="start"]');
       if (!btn) return false;
       if (!e.repeat) btn.click();
       return true;
     }
-    if (k === '1' || k === '2' || k === '3') {
-      show(PRACTICE[k - 1]);
+    if (/^[1-9]$/.test(k) && group[k - 1]) {
+      show(group[k - 1]);
       return true;
     }
   }
@@ -579,4 +597,4 @@ setBeats(store.get('beats', 4));
 // ---------- старт ----------
 show(store.get('view', isNative ? 'play' : 'notes'));
 
-window.lad = { engine, metro, chain, t3k: deps.t3k, rig: views.play, tabs: views.tabs }; // для отладки и самопроверки
+window.lad = { engine, metro, chain, t3k: deps.t3k, rig: views.play, tabs: views.tabs, games: { rain: views.rain, glide: views.glide, walls: views.walls } }; // для отладки и самопроверки

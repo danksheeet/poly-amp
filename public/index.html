@@ -26,6 +26,7 @@
     <nav class="tabs" id="learnTabs" role="tablist" aria-label="Exercises" hidden>
       <button class="tab" role="tab" data-tab="practice" title="Practice (Ctrl+2)">Practice</button>
       <button class="tab" role="tab" data-tab="tabs" title="Tabs (Ctrl+3)">Tabs</button>
+      <button class="tab" role="tab" data-tab="games" title="Games (Ctrl+4)">Games</button>
     </nav>
 
     <div class="input">
@@ -95,11 +96,20 @@
       <button data-ex="chords" title="Chords (3)"><b>Chords</b><small>clean, fast chord changes</small></button>
     </nav>
 
+    <nav class="ex-switch" id="gamesNav" aria-label="Games" hidden>
+      <button data-ex="rain" title="Fret Rain (1)"><b>Fret Rain</b><small>burst the drops on their frets</small></button>
+      <button data-ex="glide" title="Glide (2)"><b>Glide</b><small>steer with your volume</small></button>
+      <button data-ex="walls" title="Chord Wall (3)"><b>Chord Wall</b><small>break walls with chords</small></button>
+    </nav>
+
     <section class="view" id="view-play" hidden></section>
     <section class="view" id="view-notes" role="tabpanel" hidden></section>
     <section class="view" id="view-scales" role="tabpanel" hidden></section>
     <section class="view" id="view-chords" role="tabpanel" hidden></section>
     <section class="view" id="view-tabs" role="tabpanel" hidden></section>
+    <section class="view" id="view-rain" role="tabpanel" hidden></section>
+    <section class="view" id="view-glide" role="tabpanel" hidden></section>
+    <section class="view" id="view-walls" role="tabpanel" hidden></section>
   </main>
 
   <!-- в браузере здесь мониторинг гитары; в приложении панели нет: громкость гитары — в микшере мастера, метроном — в шапке -->
@@ -163,7 +173,7 @@
         <section>
           <h3>Everywhere</h3>
           <dl>
-            <dt class="native-only"><kbd>Ctrl</kbd>+<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd class="native-only">Play, Practice, Tabs</dd>
+            <dt class="native-only"><kbd>Ctrl</kbd>+<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></dt><dd class="native-only">Play, Practice, Tabs, Games</dd>
             <dt><kbd>T</kbd></dt><dd>Tuner</dd>
             <dt><kbd>0</kbd></dt><dd>Mute all sound / back on</dd>
             <dt><kbd>M</kbd></dt><dd>Metronome on / off</dd>
@@ -184,6 +194,11 @@
           <dl>
             <dt><kbd>Space</kbd></dt><dd>Start / stop</dd>
             <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Notes, Scales, Chords</dd>
+          </dl>
+          <h3>Games</h3>
+          <dl>
+            <dt><kbd>Space</kbd></dt><dd>Start / stop</dd>
+            <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Fret Rain, Glide, Chord Wall</dd>
           </dl>
         </section>
         <section>
