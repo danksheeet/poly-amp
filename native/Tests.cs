@@ -180,9 +180,9 @@ internal static class Tests
             }
         }
 
-        // --- сэмплы DI для проверки без гитары ---
-        try { ok &= SampleTests(log, outPath); }
-        catch (Exception ex) { ok = false; log.AppendLine("SAMPLE TEST ERROR: " + ex); }
+        // --- тремоло ---
+        try { ok &= TremoloTests(log); }
+        catch (Exception ex) { ok = false; log.AppendLine("TREMOLO TEST ERROR: " + ex); }
 
         // --- нейромодели NAM и импульсы кабинета ---
         try { ok &= NamTests.Run(log); }
@@ -193,56 +193,11 @@ internal static class Tests
         return ok ? 0 : 1;
     }
 
-    /// <summary>
-    /// Синтезированная DI-гитара: ноты строят (высота по автокорреляции), глушёные ноты гаснут быстро,
-    /// риффы без сбоев и в уровне DI. Риффы сохраняются рядом с отчётом, чтобы их можно было послушать.
-    /// </summary>
-    private static bool SampleTests(StringBuilder log, string outPath)
+    /// <summary>Тремоло: без глубины сигнал не меняется, на полной глубине громкость качается почти до нуля.</summary>
+    private static bool TremoloTests(StringBuilder log)
     {
         bool ok = true;
         const float fs = 48000;
-        (int str, int fret, double hz)[] notes = { (0, 0, 82.407), (1, 3, 130.813), (3, 7, 293.665), (5, 12, 659.255), (5, 17, 880.0) };
-        foreach (var (str, fret, hz) in notes)
-        {
-            float[] x = DiSynth.RenderNote(str, fret, false, fs, 1.5);
-            double got = Pitch(x.AsSpan((int)(0.3 * fs), (int)(0.4 * fs)), fs, hz);
-            double cents = 1200 * Math.Log2(got / hz);
-            bool pass = Math.Abs(cents) < 8;
-            ok &= pass;
-            log.AppendLine(string.Create(Inv, $"di note string {6 - str} fret {fret}: {got:0.00} Hz, want {hz:0.00} ({cents:+0.0;-0.0} cents) {(pass ? "OK" : "FAIL")}"));
-        }
-        {
-            float[] open = DiSynth.RenderNote(0, 0, false, fs, 1.0), mute = DiSynth.RenderNote(0, 0, true, fs, 1.0);
-            double Rms(float[] a, double t0, double t1) { double e = 0; int i0 = (int)(t0 * fs), i1 = (int)(t1 * fs); for (int i = i0; i < i1; i++) e += a[i] * a[i]; return Math.Sqrt(e / (i1 - i0)); }
-            double ringOpen = Rms(open, 0.5, 0.7) / Rms(open, 0.0, 0.1), ringMute = Rms(mute, 0.5, 0.7) / Rms(mute, 0.0, 0.1);
-            bool pass = ringOpen > 0.3 && ringMute < 0.05;
-            ok &= pass;
-            log.AppendLine(string.Create(Inv, $"di palm mute: level after 0.5 s open {ringOpen:0.000}, muted {ringMute:0.0000} {(pass ? "OK" : "FAIL")}"));
-        }
-        {
-            // запись: блоками, как в колбэке драйвера; когда место кончилось, встаёт сама; WAV читается обратно без потерь
-            var rec = new Recorder();
-            rec.Start(1000);
-            var block = new float[64];
-            float k = 0;
-            for (int b = 0; b < 20; b++)
-            {
-                for (int i = 0; i < 64; i++) block[i] = MathF.Sin(k++ * 0.01f) * 0.3f;
-                rec.Write(block);
-            }
-            bool full = rec.Full;
-            float[] got = rec.Take();
-            bool same = got.Length == 1000;
-            for (int i = 0; i < got.Length && same; i++) same = got[i] == MathF.Sin(i * 0.01f) * 0.3f;
-            string wav = outPath + ".rec-test.wav";
-            Recorder.SaveWav(wav, got, 48000);
-            (float[][] back, int rate) = IrConvolver.ReadWavChannels(wav);
-            bool round = rate == 48000 && back[0].AsSpan().SequenceEqual(got);
-            File.Delete(wav);
-            bool pass = full && same && round && !rec.Active;
-            ok &= pass;
-            log.AppendLine($"di recorder: stops when full {full}, samples intact {same}, wav round trip {round} {(pass ? "OK" : "FAIL")}");
-        }
         {
             // тремоло: при нулевой глубине сигнал не меняется (и гармоническое — низ плюс верх дают исходник),
             // при полной глубине громкость качается почти до нуля с заданной частотой
@@ -271,53 +226,7 @@ internal static class Tests
             ok &= pass;
             log.AppendLine(string.Create(Inv, $"tremolo: depth 0 diff {diff:0.000000}, full depth envelope {lo:0.000}…{hi:0.000} {(pass ? "OK" : "FAIL")}"));
         }
-        foreach (DiSynth.Riff r in DiSynth.Riffs)
-        {
-            var sw = Stopwatch.StartNew();
-            float[] y = DiSynth.Render(r.Id, fs);
-            double ms = sw.Elapsed.TotalMilliseconds;
-            float peak = 0;
-            double e = 0;
-            bool finite = true;
-            foreach (float v in y) { finite &= float.IsFinite(v); peak = MathF.Max(peak, MathF.Abs(v)); e += v * v; }
-            double rmsDb = 10 * Math.Log10(e / y.Length + 1e-12);
-            // шов круга: скачок между последним и первым отсчётом не больше обычного шага сигнала
-            float seam = MathF.Abs(y[0] - y[^1]);
-            bool pass = finite && peak > 0.25f && peak < 0.5f && rmsDb > -40 && rmsDb < -12 && seam < 0.05f;
-            ok &= pass;
-            log.AppendLine(string.Create(Inv, $"di riff {r.Id}: {y.Length / fs:0.0} s, peak {20 * Math.Log10(peak):0.0} dB, rms {rmsDb:0.0} dB, seam {seam:0.0000}, {ms:0} ms {(pass ? "OK" : "FAIL")}"));
-            WriteWav(outPath + ".di-" + r.Id + ".wav", y, (int)fs);
-        }
         return ok;
-    }
-
-    /// <summary>Частота основного тона по автокорреляции около ожидаемой (± полтона).</summary>
-    private static double Pitch(ReadOnlySpan<float> x, float fs, double expect)
-    {
-        int lo = (int)(fs / (expect * 1.06)), hi = (int)(fs / (expect / 1.06)) + 1;
-        double best = double.MinValue;
-        int bestLag = lo;
-        var r = new double[hi + 2];
-        for (int lag = lo - 1; lag <= hi + 1; lag++)
-        {
-            double s = 0, e0 = 0, e1 = 0;
-            for (int i = 0; i + lag < x.Length; i++) { s += x[i] * x[i + lag]; e0 += x[i] * x[i]; e1 += x[i + lag] * x[i + lag]; }
-            r[lag] = s / Math.Sqrt(e0 * e1 + 1e-20);
-            if (lag >= lo && lag <= hi && r[lag] > best) { best = r[lag]; bestLag = lag; }
-        }
-        // уточнение вершины параболой
-        double a = r[bestLag - 1], b = r[bestLag], c = r[bestLag + 1];
-        double shift = (a - 2 * b + c) != 0 ? 0.5 * (a - c) / (a - 2 * b + c) : 0;
-        return fs / (bestLag + shift);
-    }
-
-    private static void WriteWav(string path, float[] x, int rate)
-    {
-        using var w = new BinaryWriter(File.Create(path));
-        w.Write("RIFF"u8); w.Write(36 + x.Length * 2); w.Write("WAVE"u8);
-        w.Write("fmt "u8); w.Write(16); w.Write((short)1); w.Write((short)1); w.Write(rate); w.Write(rate * 2); w.Write((short)2); w.Write((short)16);
-        w.Write("data"u8); w.Write(x.Length * 2);
-        foreach (float v in x) w.Write((short)Math.Clamp(v * 32767f, -32768f, 32767f));
     }
 
     /// <summary>Открывает настоящий ASIO-драйвер на пару секунд (выход заглушён) и меряет, как идёт колбэк.</summary>

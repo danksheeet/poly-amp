@@ -76,10 +76,10 @@ export function createChain(engine, store, initialBlocks) {
       changed('structure', { moved: id });
     },
     /**
-     * Заменить цепочку целиком. detail уходит подписчикам: { preset: true } — выбран пресет,
-     * { auto: true } — цепочку поправило само приложение (например, подставило скачанный тон).
+     * Заменить цепочку целиком. detail уходит подписчикам: { auto: true } — цепочку поправило само приложение
+     * (например, подставило скачанный тон).
      */
-    replaceAll(next, detail = { preset: true }) {
+    replaceAll(next, detail = {}) {
       blocks = next.filter((b) => b && BLOCKS[b.type]).map((b) => makeBlock(b.type, b));
       changed('structure', detail);
     },
@@ -140,14 +140,6 @@ export function createChain(engine, store, initialBlocks) {
       engine.setGlobals({ ...globals });
       pushAll();
     },
-    /** Снимок цепочки для своего пресета: с файлами и ссылками на тоны, чтобы их можно было скачать снова. */
-    snapshot: () =>
-      blocks.map((b) => {
-        const s = { type: b.type, on: b.on, file: b.file, size: b.size, params: { ...b.params } };
-        if (b.tone) s.tone = { ...b.tone };
-        if (b.standIn) s.standIn = { ...b.standIn, params: { ...b.standIn.params }, tone: { ...b.standIn.tone } };
-        return s;
-      }),
   };
   api.sync();
   return api;

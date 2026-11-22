@@ -3,7 +3,7 @@ import { engine, isNative } from './engine.js';
 import { store } from './store.js';
 import { noteName, noteOctave } from './music.js';
 import { createChain } from './chain.js';
-import { DEFAULT_PRESET, findPreset } from './presets.js';
+import { START_CHAIN } from './blocks.js';
 import { createSettings } from './settings.js';
 import { createTone3000 } from './tone3000.js';
 import { createRig } from './modes/rig.js';
@@ -16,8 +16,8 @@ import { createTabs } from './modes/tabs.js';
 const $ = (id) => document.getElementById(id);
 document.documentElement.classList.toggle('is-native', isNative);
 
-// цепочка блоков; при первом запуске — пресет по умолчанию (встроенные блоки, звучат сразу)
-const chain = createChain(engine, store, findPreset(DEFAULT_PRESET).preset.blocks);
+// цепочка блоков; при первом запуске — стартовая цепочка из встроенных блоков (звучит сразу)
+const chain = createChain(engine, store, START_CHAIN);
 const deps = { engine, store, chain };
 deps.t3k = createTone3000($('t3k'), deps);
 
@@ -268,7 +268,7 @@ window.addEventListener(
     if (t.closest('textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
     if (t.matches('input') && !/^(range|checkbox|radio|button)$/.test(t.type)) return;
     if (k === 'left' || k === 'right' || k === 'home') {
-      // ручки забирают стрелки всегда (иначе после поворота ручки стрелка сменит пресет и правка пропадёт);
+      // ручки забирают стрелки всегда (иначе после поворота ручки стрелка перелистнёт такт в табах);
       // обычный ползунок — только если на него пришли с клавиатуры: подвинул мастер мышью — стрелки снова листают такты
       if (t.closest('[role="slider"]')) return;
       if (t.matches('input[type="range"]') && keyboardFocus) return;
@@ -316,7 +316,7 @@ function globalKey(k, e) {
       return true;
     case 'g':
       if (!isNative) return false;
-      if (!e.repeat) $('outMute').click();
+      if (!e.repeat) chain.setGlobal('out.mute', chain.global('out.mute') > 0.5 ? 0 : 1, 'key');
       return true;
   }
   if (PRACTICE.includes(current)) {
@@ -379,11 +379,7 @@ else setupWeb();
 function setupNative() {
   settings = createSettings($('settings'), deps);
   const chip = $('audioChip');
-  const outGroup = $('outGroup');
-  const outMute = $('outMute');
-  const outVol = $('outVol');
   chip.hidden = false;
-  outGroup.hidden = false;
   chip.addEventListener('click', () => settings.open());
   notice.querySelector('div').innerHTML =
     '<strong>Audio is not set up.</strong> Open “Audio settings” and choose your audio interface driver.';
@@ -407,20 +403,11 @@ function setupNative() {
     errorBox.textContent = a.error || '';
   });
 
-  // быстрые «громкость и mute» в нижней панели — те же параметры, что на экране усилителя
-  const syncOut = () => {
-    outMute.checked = chain.global('out.mute') < 0.5;
-    outVol.value = chain.global('out.level');
-  };
-  outMute.addEventListener('change', () => chain.setGlobal('out.mute', outMute.checked ? 0 : 1, 'dock'));
-  outVol.addEventListener('input', () => chain.setGlobal('out.level', +outVol.value, 'dock'));
-  chain.on((what, d) => what === 'global' && d.source !== 'dock' && (d.name === 'out.mute' || d.name === 'out.level') && syncOut());
-  syncOut();
-
+  // громкость клика и нот-подсказок — в окошке метронома; громкость и mute гитары — в микшере мастера
   const mVol = $('mVol');
-  mVol.hidden = false;
   mVol.value = chain.global('synth.level') * 100;
-  mVol.addEventListener('input', () => chain.setGlobal('synth.level', mVol.value / 100, 'dock'));
+  mVol.addEventListener('input', () => chain.setGlobal('synth.level', mVol.value / 100, 'metro'));
+  chain.on((what, d) => what === 'global' && d.name === 'synth.level' && d.source !== 'metro' && (mVol.value = d.value * 100));
 
   engine.start();
 }
@@ -431,6 +418,7 @@ function setupWeb() {
   const deviceSelect = $('deviceSelect');
   const channelSeg = $('channelSeg');
   const monitorGroup = $('monitorGroup');
+  $('dock').hidden = false; // в браузере внизу остаётся мониторинг гитары
   const monOn = $('monOn');
   const monTone = $('monTone');
   const monVol = $('monVol');
@@ -538,6 +526,7 @@ const mSig = $('mSig');
 function setBpm(v) {
   metro.bpm = Math.max(40, Math.min(220, Math.round(v)));
   mBpm.textContent = metro.bpm;
+  $('mBpmBig').textContent = metro.bpm;
   mRange.value = metro.bpm;
   store.set('bpm', metro.bpm);
   if (metro.running) metro.apply();
@@ -545,6 +534,7 @@ function setBpm(v) {
 function setBeats(n) {
   metro.beats = n;
   mSig.value = n;
+  $('mSigLabel').textContent = n === 6 ? '6/8' : n + '/4';
   mBeats.replaceChildren(...Array.from({ length: n }, () => document.createElement('i')));
   store.set('beats', n);
   if (metro.running) metro.apply();
@@ -561,8 +551,17 @@ mToggle.addEventListener('click', () => {
   else metro.start();
   mToggle.textContent = metro.running ? '■' : '▶';
   mToggle.setAttribute('aria-label', metro.running ? 'Stop the metronome' : 'Start the metronome');
-
+  $('metroTop').classList.toggle('is-on', metro.running);
 });
+// окошко с темпом, размером и Tap — под кнопкой метронома в шапке
+const mPop = $('mPop');
+function setMetroPop(open) {
+  mPop.hidden = !open;
+  $('mOpen').setAttribute('aria-expanded', open);
+}
+$('mOpen').addEventListener('click', () => setMetroPop(mPop.hidden));
+document.addEventListener('pointerdown', (e) => !mPop.hidden && !$('metroTop').contains(e.target) && setMetroPop(false));
+document.addEventListener('keydown', (e) => e.key === 'Escape' && !mPop.hidden && setMetroPop(false));
 $('mMinus').addEventListener('click', () => setBpm(metro.bpm - 5));
 $('mPlus').addEventListener('click', () => setBpm(metro.bpm + 5));
 mRange.addEventListener('input', () => setBpm(+mRange.value));

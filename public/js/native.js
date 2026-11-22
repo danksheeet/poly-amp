@@ -16,10 +16,6 @@ class NativeEngine {
       drivers: new Set(),
       block: new Set(),
       picked: new Set(),
-      samples: new Set(),
-      sample: new Set(),
-      pickedSample: new Set(),
-      rec: new Set(),
       tabsLib: new Set(),
       songsterrSaved: new Set(),
       t3k: new Set(),
@@ -32,8 +28,6 @@ class NativeEngine {
     this.meters = { inPk: 0, outPk: 0, cpu: 0 };
     // что движок знает о файлах блоков: id блока → { loaded, path, name, error, source, … }
     this.blockInfo = new Map();
-    this.samples = { riffs: [], files: [] }; // риффы для проверки без гитары и свои DI-записи из папки
-    this.sample = { on: false };
     this.tabsLibrary = null; // { dir, items: [{ rel, ext, size, mtime }] }
     this.fileRequests = new Map();
     this.fileSeq = 0;
@@ -77,7 +71,7 @@ class NativeEngine {
   onMessage(m) {
     switch (m.t) {
       case 'frame': {
-        this.meters = { inPk: m.inPk || 0, outPk: m.outPk || 0, cpu: m.cpu || 0, callbacks: m.cb || 0, smp: m.smp ?? -1, rec: m.rec ?? -1, recFull: !!m.recFull };
+        this.meters = { inPk: m.inPk || 0, outPk: m.outPk || 0, cpu: m.cpu || 0, callbacks: m.cb || 0 };
         if (m.fault && !this.audio.error) {
           // обработка звука упала — показываем причину, а не молчим
           this.audio = { ...this.audio, error: 'Audio processing failed: ' + m.fault.split('\n')[0] };
@@ -110,20 +104,6 @@ class NativeEngine {
         break;
       case 'picked':
         this.emit('picked', m);
-        break;
-      case 'samples':
-        this.samples = { riffs: m.riffs || [], files: m.files || [] };
-        this.emit('samples', this.samples);
-        break;
-      case 'sample':
-        this.sample = m;
-        this.emit('sample', m);
-        break;
-      case 'pickedSample':
-        this.emit('pickedSample', m);
-        break;
-      case 'rec':
-        this.emit('rec', m);
         break;
       case 'tabsLib':
         this.tabsLibrary = m;
@@ -199,12 +179,7 @@ class NativeEngine {
     this.post({ t: 'global', p });
   }
 
-  // ---------- проверка без гитары ----------
-
-  /** Сэмпл DI вместо гитары: id рифа или 'file' со своим WAV. Ответ — событие «sample». */
-  playSample(id, path, on) {
-    this.post({ t: 'sample', id, path: path || '', on: on ? 1 : 0 });
-  }
+  // ---------- обход цепочки ----------
 
   /** Обход всей цепочки — послушать сухой сигнал. */
   setBypass(on) {
@@ -244,21 +219,6 @@ class NativeEngine {
   /** Открыть PDF из библиотеки в обычном просмотрщике. */
   tabsOpen(rel) {
     this.post({ t: 'tabsOpen', rel });
-  }
-
-  /** Записать свою игру с входа (до минуты); ответы — событие «rec». */
-  recStart() {
-    this.post({ t: 'recStart' });
-  }
-
-  /** Остановить запись: приложение обрежет тишину и сохранит WAV в «Документы\Poly Amp\DI». */
-  recStop() {
-    this.post({ t: 'recStop' });
-  }
-
-  /** Выбрать свою DI-запись; ответ — событие «pickedSample» { path }. */
-  pickSample() {
-    this.post({ t: 'pickSample' });
   }
 
   /** Открыть диалог выбора своего файла; ответ придёт событием «picked» { id, path }. */

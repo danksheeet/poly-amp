@@ -1,5 +1,5 @@
-// Панель выбранного блока под доской: что в нём стоит, откуда это, ручки, порядок и удаление.
-// Для входа и выхода — общие уровни, которые не входят в пресеты.
+// Окно выбранного слота справа, как окно плагина в DAW: что в блоке стоит, откуда это, ручки,
+// порядок и удаление. Для входа и выхода — общие уровни канала.
 import { BLOCKS, iconSvg } from '../blocks.js';
 import { createKnob } from '../knob.js';
 import { describeBlock, GEAR, hasCab, baseName } from './info.js';
@@ -35,7 +35,7 @@ function seg(options, value, onPick, cls = '') {
   return s;
 }
 
-export function createDetail(host, { chain, engine, store, t3k, tones, onSelect, onDownload, onUserFile }) {
+export function createDetail(host, { chain, engine, store, t3k, tones, onSelect, onDownload, onUserFile, getDownload = () => null }) {
   host.classList.add('detail');
   const native = engine.isNative;
   let knobs = {}; // имя параметра → ручка, чтобы обновлять без перерисовки
@@ -76,7 +76,7 @@ export function createDetail(host, { chain, engine, store, t3k, tones, onSelect,
         chain.setGlobal('out.mute', chain.global('out.mute') > 0.5 ? 0 : 1, 'detail'), 'Mute the guitar at the output');
       row.append(m);
     }
-    nodes.push(row, el('p', 'dt-note', 'Set these levels once for your guitar and headphones — they stay the same when you switch presets.'));
+    nodes.push(row, el('p', 'dt-note', 'Set these levels once for your guitar and headphones.'));
     host.replaceChildren(...nodes);
   }
 
@@ -85,12 +85,12 @@ export function createDetail(host, { chain, engine, store, t3k, tones, onSelect,
     const i = chain.index(b.id);
     const n = chain.blocks().length;
     const box = el('div', 'dt-tools');
-    const left = button('‹', 'rb', () => chain.move(b.id, i - 1), 'Move earlier in the chain');
-    const right = button('›', 'rb', () => chain.move(b.id, i + 1), 'Move later in the chain');
-    left.disabled = i <= 0;
-    right.disabled = i >= n - 1;
-    left.setAttribute('aria-label', 'Move left');
-    right.setAttribute('aria-label', 'Move right');
+    const up = button('↑', 'rb', () => chain.move(b.id, i - 1), 'Move up the chain (earlier)');
+    const down = button('↓', 'rb', () => chain.move(b.id, i + 1), 'Move down the chain (later)');
+    up.disabled = i <= 0;
+    down.disabled = i >= n - 1;
+    up.setAttribute('aria-label', 'Move up');
+    down.setAttribute('aria-label', 'Move down');
     const power = el('button', 'power');
     power.setAttribute('aria-pressed', b.on);
     power.setAttribute('aria-label', b.on ? 'Turn the block off' : 'Turn the block on');
@@ -104,7 +104,7 @@ export function createDetail(host, { chain, engine, store, t3k, tones, onSelect,
     }, 'Remove the block from the chain');
     del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>';
     del.setAttribute('aria-label', 'Remove block');
-    box.append(left, right, power, del);
+    box.append(up, down, power, del);
     return box;
   }
 
@@ -207,17 +207,20 @@ export function createDetail(host, { chain, engine, store, t3k, tones, onSelect,
       const box = el('div', 'dt-callout');
       const p = el('p');
       if (b.standIn) {
-        p.append('This is a temporary stand-in: the preset has ');
+        p.append('A built-in block is playing here for now in place of ');
         p.append(el('b', '', tone.title));
-        p.append(' from TONE3000 here. Download the tone and it will replace the built-in block.');
+        p.append(' from TONE3000. Download the tone and it will take its place.');
       } else {
-        p.append('The preset tone ');
+        p.append('The tone ');
         p.append(el('b', '', tone.title));
         p.append(' isn’t downloaded yet, so the block is silent for now.');
       }
       box.append(p);
+      const dl = getDownload();
+      if (dl?.stage === 'progress') box.append(el('p', 'dt-dl', `Downloading ${dl.index + 1} of ${dl.total}: “${dl.title}”. If TONE3000 asks you to sign in, sign in — the rest downloads by itself.`));
+      else if (dl?.stage === 'done' && dl.errors.length) box.append(el('p', 'dt-dl is-bad', 'Not all tones downloaded. ' + dl.errors.join('; ')));
       if (native) {
-        const go = button(tones.busy ? 'Downloading…' : 'Download preset tones', 'btn-t3k', () => onDownload());
+        const go = button(tones.busy ? 'Downloading…' : dl?.errors?.length ? 'Try again' : 'Download tones', 'btn-t3k', () => onDownload());
         go.disabled = tones.busy;
         box.append(go);
       }
@@ -279,11 +282,10 @@ export function createDetail(host, { chain, engine, store, t3k, tones, onSelect,
     if (b) return renderBlock(b);
     knobs = {};
     host.style.setProperty('--c', '#9aa3b5');
-    host.replaceChildren(el('p', 'dt-empty', 'Select a block on the board to tweak its knobs.'
-));
+    host.replaceChildren(el('p', 'dt-empty', 'Select a slot in the channel to see its controls.'));
   }
 
-  // ручки, которые поменялись не из этой панели (например, общая громкость из нижней панели)
+  // ручки, которые поменялись не из этого окна (например, выход заглушили клавишей G)
   chain.on((what, d) => {
     if (what === 'global' && d.source !== 'detail' && knobs[d.name]) knobs[d.name].set(d.value, true);
     if (what === 'global' && d.name === 'out.mute' && current === 'out') render('out');

@@ -128,7 +128,6 @@ internal sealed class MainForm : Form
                     SendBlocks();
                     SendT3kStatus();
                     SendLibrary();
-                    SendSamples();
                     break;
                 case "open":
                     Open(m.GetProperty("driver").GetString() ?? "", Int(m, "inCh"), Int(m, "outCh"), Int(m, "rate"));
@@ -214,17 +213,8 @@ internal sealed class MainForm : Form
                     if (m.GetProperty("url").GetString() is { } link && (Tone3000Client.IsToneUrl(link) || IsSongsterrUrl(link) || IsHelpUrl(link)))
                         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(link) { UseShellExecute = true });
                     break;
-                case "sample":
-                    ApplySample(Str(m, "id"), Str(m, "path") is { Length: > 0 } sp ? sp : null, Int(m, "on") != 0);
-                    break;
                 case "bypass":
                     engine.Bypass = Int(m, "on") != 0;
-                    break;
-                case "recStart":
-                    StartRecording();
-                    break;
-                case "recStop":
-                    FinishRecording();
                     break;
                 case "tabsLib":
                     _ = SendTabsLibrary();
@@ -240,10 +230,6 @@ internal sealed class MainForm : Form
                     break;
                 case "songsterr":
                     _ = OpenSongsterrAsync(Str(m, "url"), Str(m, "q"));
-                    break;
-                case "pickSample":
-                    if (PickFile("Dry guitar recording (*.wav)|*.wav|All files|*.*", "Choose a DI recording") is { } di)
-                        Post(JsonSerializer.Serialize(new { t = "pickedSample", path = di }));
                     break;
                 case "chroma":
                     engine.SetChromaEnabled(Int(m, "on") != 0);
@@ -281,7 +267,6 @@ internal sealed class MainForm : Form
         {
             engine.Open(driver, inCh, outCh, rate);
             SendAudio(null);
-            if (engine.Sample.On && sampleSel is { } sel) ApplySample(sel.id, sel.path, true); // частота могла смениться
             SendBlocks(); // частота могла смениться: обновляем предупреждения и пересчитанные импульсы
         }
         catch (Exception ex)
@@ -515,114 +500,6 @@ internal sealed class MainForm : Form
         log.Add("RESULT: " + (ok ? "OK" : "FAIL"));
         File.WriteAllLines(ssTestPath, log);
         Close();
-    }
-
-    // ---------- сэмплы для проверки без гитары ----------
-
-
-    private (string id, string? path)? sampleSel;
-
-    /// <summary>Папка для своих DI-записей: всё, что в ней лежит, видно в списке сэмплов.</summary>
-    private static string DiDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Poly Amp", "DI");
-
-    private void SendSamples()
-    {
-        string[] files = Directory.Exists(DiDir) ? Directory.GetFiles(DiDir, "*.wav").OrderBy(f => f).ToArray() : [];
-        Post(JsonSerializer.Serialize(new
-        {
-            t = "samples",
-            riffs = DiSynth.Riffs.Select(r => new { id = r.Id, name = r.Name, note = r.Note }),
-            files,
-        }));
-    }
-
-    private const double MaxRecordSeconds = 60;
-    private const string RecordPrefix = "Recording ";
-    private const string LegacyRecordPrefix = "\u0417\u0430\u043f\u0438\u0441\u044c "; // так назывались записи до перевода интерфейса
-
-    /// <summary>Своя запись с входа (её громкость не выравниваем — она звучит как живая гитара).</summary>
-    private static bool IsOwnRecording(string path) =>
-        (Path.GetFileName(path).StartsWith(RecordPrefix, StringComparison.Ordinal)
-         || Path.GetFileName(path).StartsWith(LegacyRecordPrefix, StringComparison.Ordinal))
-        && string.Equals(Path.GetDirectoryName(Path.GetFullPath(path)), DiDir, StringComparison.OrdinalIgnoreCase);
-
-    private void StartRecording()
-    {
-        if (!engine.IsOpen)
-        {
-            Post(JsonSerializer.Serialize(new { t = "rec", on = false, error = "Audio is off — turn it on in “Audio settings”." }));
-            return;
-        }
-        if (engine.Sample.On) ApplySample(sampleSel?.id ?? "", sampleSel?.path, false); // пишем гитару, а не сэмпл
-        engine.StartRecording(MaxRecordSeconds);
-        Post(JsonSerializer.Serialize(new { t = "rec", on = true, max = MaxRecordSeconds }));
-    }
-
-    /// <summary>
-    /// Остановить запись: обрезать тишину по краям, проверить, что гитару слышно, сохранить WAV в папку DI.
-    /// </summary>
-    private void FinishRecording()
-    {
-        if (!engine.Recording) return;
-        float[] x = engine.StopRecording();
-        int fs = (int)engine.SampleRate;
-        void Fail(string error) => Post(JsonSerializer.Serialize(new { t = "rec", on = false, error }));
-
-        float peak = 0;
-        foreach (float v in x) peak = MathF.Max(peak, MathF.Abs(v));
-        if (peak < 0.003f) { Fail("The guitar can't be heard — check the input in “Audio settings” and the Inst button on your interface."); return; }
-        float thr = MathF.Max(0.004f, peak * 0.02f);
-        int first = Array.FindIndex(x, v => MathF.Abs(v) > thr);
-        int last = Array.FindLastIndex(x, v => MathF.Abs(v) > thr);
-        int start = Math.Max(0, first - (int)(0.03 * fs));
-        int end = Math.Min(x.Length, last + fs); // секунда после последней ноты — пусть дозвучит
-        if (end - start < fs * 1.5) { Fail("The recording is too short — play for at least a couple of seconds."); return; }
-        float[] y = x[start..end];
-        // мягкие края, чтобы по кругу не щёлкало
-        int fadeIn = Math.Min(y.Length / 4, (int)(0.004 * fs)), fadeOut = Math.Min(y.Length / 4, (int)(0.05 * fs));
-        for (int i = 0; i < fadeIn; i++) y[i] *= (float)i / fadeIn;
-        for (int i = 0; i < fadeOut; i++) y[^(i + 1)] *= (float)i / fadeOut;
-
-        try
-        {
-            Directory.CreateDirectory(DiDir);
-            string path = Path.Combine(DiDir, RecordPrefix + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".wav");
-            Recorder.SaveWav(path, y, fs);
-            SendSamples();
-            Post(JsonSerializer.Serialize(new
-            {
-                t = "rec", on = false, path, seconds = y.Length / (double)fs,
-                quiet = peak < 0.05f, // тише −26 дБ: стоит поднять Gain на интерфейсе
-                error = (string?)null,
-            }));
-        }
-        catch (Exception ex) { Fail("Couldn't save the recording: " + ex.Message); }
-    }
-
-    private void ApplySample(string id, string? path, bool on)
-    {
-        try
-        {
-            double seconds = 0;
-            if (on)
-            {
-                bool raw = id == "file" && path != null && IsOwnRecording(path);
-                float[] data = id == "file" && path != null ? DiSynth.LoadWav(path, engine.SampleRate, !raw) : DiSynth.Render(id, engine.SampleRate);
-                engine.Sample.Set(data, raw);
-                sampleSel = (id, path);
-                seconds = data.Length / engine.SampleRate;
-            }
-            engine.Sample.On = on;
-            Post(JsonSerializer.Serialize(new { t = "sample", on, id, path, seconds, error = (string?)null }));
-        }
-        catch (Exception ex)
-        {
-            engine.Sample.On = false;
-            string error = ex is IrException or ArgumentException ? ex.Message
-                : ex is FileNotFoundException or DirectoryNotFoundException ? "File not found — it was moved or deleted."
-                : "Couldn't open the sample: " + ex.Message;
-            Post(JsonSerializer.Serialize(new { t = "sample", on = false, id, path, seconds = 0, error }));
-        }
     }
 
     // ---------- цепочка блоков ----------

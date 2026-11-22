@@ -21,8 +21,6 @@ internal sealed class AudioEngine : IDisposable
 
     private readonly Chain chain = new();
     private readonly Synth synth = new();
-    private readonly SamplePlayer sample = new();
-    private readonly Recorder recorder = new();
     private Analyzer? analyzer;
 
     private float[] mono = Array.Empty<float>(), ana = Array.Empty<float>();
@@ -51,23 +49,7 @@ internal sealed class AudioEngine : IDisposable
 
     public AudioInfo? Info { get; private set; }
     public Synth Synth => synth;
-    /// <summary>Сэмпл DI-гитары вместо входа — проверить тон без гитары.</summary>
-    public SamplePlayer Sample => sample;
     public bool Bypass { get => chain.Bypass; set => chain.Bypass = value; }
-    public bool Recording => recorder.Active;
-
-    /// <summary>Начать запись сырого входа (не дольше maxSeconds).</summary>
-    public void StartRecording(double maxSeconds) => recorder.Start((int)(maxSeconds * sampleRate));
-
-    /// <summary>Остановить запись и забрать её. Ждём, пока аудиопоток допишет текущий блок.</summary>
-    public float[] StopRecording()
-    {
-        recorder.Halt();
-        long c = Interlocked.Read(ref Callbacks);
-        var sw = Stopwatch.StartNew();
-        while (IsOpen && Interlocked.Read(ref Callbacks) < c + 2 && sw.ElapsedMilliseconds < 150) Thread.Sleep(2);
-        return recorder.Take();
-    }
     public Analyzer? Analyzer => analyzer;
     public bool IsOpen => driver != null;
 
@@ -315,9 +297,6 @@ internal sealed class AudioEngine : IDisposable
             if (faulted) { Silence(outputs, n); return; }
 
             ReadInput(inputs[0], mono, n);
-            recorder.Write(mono.AsSpan(0, n)); // запись — сырой вход, как настоящая DI-дорожка
-            // сэмпл подменяет гитару; громкость входа для него не действует — уровень всегда как у обычного DI
-            sample.Fill(mono.AsSpan(0, n), 1f / DspMath.Db(chain.InGainDb));
             chain.Process(mono.AsSpan(0, n), outL.AsSpan(0, n), outR.AsSpan(0, n));
 
             // синтезатор слышен и на выходе, и приложению (чтобы тренажёры работали без гитары)
@@ -482,13 +461,6 @@ internal sealed class AudioEngine : IDisposable
         sb.Append(",\"outPk\":").Append(op.ToString("0.####", inv));
         sb.Append(",\"cpu\":").Append(cpu.ToString("0.###", inv));
         sb.Append(",\"cb\":").Append(Callbacks);
-        float sp = sample.Progress;
-        if (sp >= 0) sb.Append(",\"smp\":").Append(sp.ToString("0.###", inv));
-        if (recorder.Active)
-        {
-            sb.Append(",\"rec\":").Append((recorder.Length / sampleRate).ToString("0.#", inv));
-            if (recorder.Full) sb.Append(",\"recFull\":1");
-        }
         if (Fault != null) sb.Append(",\"fault\":").Append(System.Text.Json.JsonSerializer.Serialize(Fault));
     }
 

@@ -36,6 +36,19 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2 0 3.6 1.1 5 3 1.4-1.9 3-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z" fill="currentColor"/></svg>
         <span>Support</span>
       </button>
+      <div class="metro-top" id="metroTop">
+        <button class="mt-play" id="mToggle" aria-label="Start the metronome" title="Metronome: start or stop (M)">▶</button>
+        <div class="metro-beats" id="mBeats" aria-hidden="true"></div>
+        <button class="mt-open" id="mOpen" aria-haspopup="true" aria-expanded="false" title="Metronome: tempo, beats, tap">
+          <output id="mBpm">90</output><small>BPM</small><span class="mt-sig" id="mSigLabel">4/4</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="mt-pop" id="mPop" role="dialog" aria-label="Metronome" hidden>
+          <div class="mt-row"><button class="btn btn-ghost btn-sq" id="mMinus" aria-label="Slower" title="Slower (−)">−</button><div class="mt-big"><output id="mBpmBig">90</output><small>BPM</small></div><button class="btn btn-ghost btn-sq" id="mPlus" aria-label="Faster" title="Faster (+)">+</button></div>
+          <input type="range" id="mRange" min="40" max="220" value="90" aria-label="Tempo">
+          <div class="mt-row"><span class="mt-lbl">Beats</span><select id="mSig" class="select" aria-label="Time signature"><option value="2">2/4</option><option value="3">3/4</option><option value="4" selected>4/4</option><option value="6">6/8</option></select><button class="btn btn-ghost mt-tap" id="mTap">Tap</button></div>
+          <div class="mt-row native-only"><span class="mt-lbl">Volume</span><input type="range" id="mVol" min="0" max="100" value="80" title="Volume of the metronome and reference notes" aria-label="Metronome volume"></div>
+        </div>
+      </div>
       <button class="btn tuner-btn" id="tunerBtn" title="Open the tuner (T)">Tuner</button>
       <div class="master" id="master">
         <button class="ms-mute" id="msMute" aria-pressed="false" aria-label="Mute all sound" title="Mute all sound (0)">
@@ -89,27 +102,8 @@
     <section class="view" id="view-tabs" role="tabpanel" hidden></section>
   </main>
 
-  <footer class="dock">
-    <div class="dock-group metro">
-      <span class="dock-title">Metronome</span>
-      <button class="btn btn-round" id="mToggle" aria-label="Start the metronome" title="Start or stop (M)">▶</button>
-      <div class="metro-beats" id="mBeats" aria-hidden="true"></div>
-      <button class="btn btn-ghost btn-sq" id="mMinus" aria-label="Slower" title="Slower (−)">−</button>
-      <div class="metro-bpm"><output id="mBpm">90</output><small>BPM</small></div>
-      <button class="btn btn-ghost btn-sq" id="mPlus" aria-label="Faster" title="Faster (+)">+</button>
-      <input type="range" id="mRange" min="40" max="220" value="90" aria-label="Tempo">
-      <select id="mSig" class="select" aria-label="Time signature">
-        <option value="2">2/4</option><option value="3">3/4</option><option value="4" selected>4/4</option><option value="6">6/8</option>
-      </select>
-      <button class="btn btn-ghost" id="mTap">Tap</button>
-      <input type="range" id="mVol" min="0" max="100" value="80" title="Volume of the metronome and reference notes" aria-label="Metronome volume" hidden>
-    </div>
-    <div class="dock-group" id="outGroup" hidden>
-      <label class="switch" title="Guitar sound at the output (G)">
-        <input type="checkbox" id="outMute" checked><span class="switch-ui"></span><span>Guitar sound</span>
-      </label>
-      <input type="range" id="outVol" min="-40" max="6" step="0.5" value="-6" aria-label="Guitar volume">
-    </div>
+  <!-- в браузере здесь мониторинг гитары; в приложении панели нет: громкость гитары — в микшере мастера, метроном — в шапке -->
+  <footer class="dock" id="dock" hidden>
     <div class="dock-group monitor" id="monitorGroup" hidden>
       <label class="switch" title="Hear the guitar through the app. Leave it off if Direct Monitor is on at your interface.">
         <input type="checkbox" id="monOn"><span class="switch-ui"></span><span>Monitor guitar</span>
@@ -181,10 +175,10 @@
           </dl>
           <h3>Play</h3>
           <dl>
-            <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous / next preset</dd>
-            <dt class="native-only"><kbd>Space</kbd></dt><dd class="native-only">Play / stop the sample</dd>
             <dt class="native-only"><kbd>B</kbd></dt><dd class="native-only">Bypass: hear the dry signal</dd>
-            <dt><kbd>Ctrl</kbd>+<kbd>S</kbd></dt><dd>Save as your preset</dd>
+            <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Previous / next slot</dd>
+            <dt><kbd>Delete</kbd></dt><dd>Remove the selected slot</dd>
+            <dt><kbd>Enter</kbd></dt><dd>Add the effect picked in the browser</dd>
           </dl>
           <h3>Practice</h3>
           <dl>

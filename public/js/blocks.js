@@ -22,6 +22,7 @@ const ICONS = {
   delay: '<path d="M5 5.500v13M10 8v8M14.500 10v4M18.500 11.200v1.600"/>',
   reverb: '<circle cx="5.500" cy="12" r="1.300"/><path d="M10 8.500a5 5 0 0 1 0 7M13.500 6a9 9 0 0 1 0 12M17 3.500a13 13 0 0 1 0 17"/>',
   space: '<path d="M11 4l1.700 4.800L17.500 10.500l-4.800 1.700L11 17l-1.700-4.800L4.500 10.500l4.800-1.700zM18 15l.800 2.200L21 18l-2.200.800L18 21l-.800-2.200L15 18l2.200-.800z"/>',
+  search: '<circle cx="11" cy="11" r="6.500"/><path d="M16 16l4.500 4.500"/>',
 };
 export const iconSvg = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.pedal}</svg>`;
@@ -116,6 +117,14 @@ export const BLOCKS = {
     params: { mix: { label: 'Mix', min: 0, max: 1, def: 0.3, fmt: pct(1) } },
   },
 };
+
+/** Цепочка при первом запуске: британский кранч на встроенных блоках, звучит сразу, без скачиваний. */
+export const START_CHAIN = [
+  { type: 'gate' },
+  { type: 'polyamp', params: { channel: 1, gain: 0.5, bass: 0.55, mid: 0.6, treble: 0.55 } },
+  { type: 'polycab', params: { type: 0 } },
+  { type: 'reverb', params: { mix: 0.12 } },
+];
 
 /** Порядок в меню «Добавить блок». */
 export const ADD_MENU = [

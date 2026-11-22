@@ -20,8 +20,8 @@ shows what you hit and what you missed.
   library, ready to play. Got your own Guitar Pro files? Point the app at the folder.
 - 🔥 **Practice that sounds like playing.** Drilling a song through a thin clean tone gets old fast. Here your guitar
   runs through neural captures of real amps and pedals ([NAM](https://www.neuralampmodeler.com)), with thousands of
-  free ones on [TONE3000](https://www.tone3000.com), plus built-in amps, drives, cabs, delay and reverb. Presets play
-  right away.
+  free ones on [TONE3000](https://www.tone3000.com), plus built-in amps, drives, cabs, delay and reverb. A ready
+  chain plays right away.
 - 🎼 **Learn it your way.** Slow a song down, loop the hard part, count in, solo or mute any track, follow it on the
   fretboard.
 - 👂 **It actually listens.** *Play along* marks every hit and miss. *Wait for me* stops until you play the right note.
@@ -41,8 +41,8 @@ shows what you hit and what you missed.
   Steinberg UR, M-Audio, PreSonus… any will do). Install its driver from the maker's website.
 - Headphones or speakers.
 
-No interface yet? You can still try everything (test riffs, tabs, practice) with your computer's sound card or a USB
-headset and a free driver: [FlexASIO](https://github.com/dechamps/FlexASIO) or [ASIO4ALL](https://asio4all.org/).
+No interface yet? You can still try tabs and practice with your computer's sound card or a USB headset and a free
+driver: [FlexASIO](https://github.com/dechamps/FlexASIO) or [ASIO4ALL](https://asio4all.org/).
 
 ## Get started
 
@@ -51,7 +51,8 @@ headset and a free driver: [FlexASIO](https://github.com/dechamps/FlexASIO) or [
 2. If you have one audio interface, the app connects to it by itself. Otherwise **Audio settings** opens (the status
    button at the top right): pick your interface and the input your guitar is plugged into. On the interface, turn on
    **Inst** (Hi-Z) and turn off **Direct Monitor**.
-3. Pick a preset on the left and play. No guitar at hand? Press **▶ Test without a guitar**.
+3. Play: a basic chain is already set up. Drag effects and amps from the browser on the left into the channel to
+   build your own.
 
 ## FAQ
 
@@ -63,8 +64,7 @@ To play your guitar through it, yes: a guitar needs a proper instrument input, a
 To look around and practice without a guitar, no (see [What you need](#what-you-need)).
 
 **Can I use it without a guitar?**
-Yes. Built-in riffs let you hear every preset, tabs play back on their own, and in the exercises you can click the
-fretboard instead of playing.
+Yes. Tabs play back on their own, and in the exercises you can click the fretboard instead of playing.
 
 **What are NAM and TONE3000?**
 NAM (Neural Amp Modeler) is a free, open technology that copies the sound of a real amp or pedal with a neural
@@ -73,7 +73,7 @@ chain with cabs and effects.
 
 **How is it different from the NAM plugin?**
 The official NAM plugin loads one capture and a cab, mostly inside a DAW. Poly Amp is a standalone app for playing and
-practicing: a whole chain of captures and effects, presets, the TONE3000 catalog built in, plus tabs and exercises.
+practicing: a whole chain of captures and effects, the TONE3000 catalog built in, plus tabs and exercises.
 
 **Is the latency OK?**
 With an audio interface, a few milliseconds round trip, which you won't notice. Universal drivers (FlexASIO,
@@ -90,21 +90,20 @@ Not yet: the app is built on Windows audio drivers (ASIO) and WebView2.
 
 ### Play: the effects chain
 
-The board shows **IN → blocks → OUT**, presets on the left and the selected block's panel below.
+The screen is laid out like a DAW mixer: the **browser** on the left, the **guitar channel** with insert slots in the
+middle (top to bottom: IN, the chain, OUT) and the selected slot's window with its knobs on the right.
 
-- The **“+”** between tiles adds a block: TONE3000 tones (pedal, amp, cab, space) or built-in ones. Drag tiles or use
-  ‹ › to reorder; the LED on a tile bypasses a block; the trash can removes it.
-- **IN and OUT** are global levels (input gain, output level and mute) and don't change with presets.
+- **Browser**: built-in effects and **TONE3000 Cloud** (the tones you've downloaded plus **Browse the catalog…** for
+  amps, pedals, cabs and spaces). Search filters everything. Drag a row into a slot, or double-click it (Enter, “+”)
+  to add it after the selected slot.
+- **Channel**: drag slots to reorder, the LED turns a block on and off, a click on an empty slot opens the add menu.
+  The chain can be as long as you like. **IN and OUT** are global levels: input gain, output level and mute.
 - In a TONE3000 block, **TONE3000** opens their catalog in an app window, **File…** loads your own `.nam` or `.wav`,
   and the list shows the tones you've already downloaded. NAM A1, A2 and LSTM models, cab and room impulse responses
   are supported; A2 models have a **Full / Lite** switch (Lite is lighter on the CPU).
 - If an amp capture includes a cab, separate cabs after it switch off automatically; an amp without a cab gets a hint
   to add one.
-- Besides the built-in presets there are example collections (clean & ambient, rock & blues, high gain) with TONE3000
-  tones. They play with similar built-in blocks (“stand-in”) until you press **Download tones**; after one sign-in the
-  tones download and replace the stand-ins. **Save** stores your own preset.
-- **Test without a guitar**: ▶ (or Space) loops a dry DI riff into the chain; **Bypass** compares with the dry
-  sound; ● records your own playing (up to a minute) to `Documents\Poly Amp\DI`, where you can also drop any DI WAV.
+- **Bypass** (or **B**) turns the whole chain off so you can compare with the dry guitar.
 
 ### Learn: practice and tabs
 
@@ -135,7 +134,8 @@ Press **F1** (or the keyboard button at the top) for the full list. The main one
 **Ctrl+1 / 2 / 3** switch between Play, Practice and Tabs, **T** tuner, **M** metronome, **− / +** slower / faster,
 **0** mute all sound.
 In Tabs: **← / →** a bar back / forward, **Home** back to start, **L** loop, **1 / 2 / 3** Listen, Play along,
-Wait for me. On Play: **← / →** previous / next preset. Shortcuts work with any keyboard layout.
+Wait for me. On Play: **B** bypass, **↑ / ↓** previous / next slot, **Delete** removes the selected slot. Shortcuts
+work with any keyboard layout.
 
 ### TONE3000
 
@@ -155,14 +155,14 @@ their creators and carry the licenses they chose. Powered by TONE3000.
   designed for 48 kHz (at other rates they sound slightly different and the app warns you). You can choose another rate
   in Audio settings.
 - **Hearing the dry guitar on top**: turn off Direct Monitor on the interface.
-- **Quiet guitar**: set the gain knob on the interface so hard strums don't clip, then use **Gain** on the IN tile.
+- **Quiet guitar**: set the gain knob on the interface so hard strums don't clip, then use **Gain** on the IN slot.
 - **Tab playback is silent**: tabs use the Windows default output device; make your interface (or headphones) the
   default device.
 - **The app asks for WebView2**: the UI runs on the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and
   almost every Windows 10. If it's missing, the app offers the download page.
 - **Older CPUs**: neural models use AVX2 when the CPU has it and a compatible build otherwise, picked automatically.
 
-Settings are stored in `%LOCALAPPDATA%\Lad`; downloaded tones and DI recordings in `Documents\Poly Amp`.
+Settings are stored in `%LOCALAPPDATA%\Lad`; downloaded tones in `Documents\Poly Amp`.
 
 ## Support the project
 
@@ -222,7 +222,6 @@ native/                 the app: .NET 10, WinForms + WebView2, NAudio ASIO
   BuiltinRig.cs         built-in drive, three-channel amp and cabs
   Dsp.cs, LongConvolver.cs, Ir.cs   filters, delay, reverb, FFT convolution, impulse responses
   Nam.cs, NativeNam.cs  .nam models: the official NAM library (namcore.dll) and a built-in fallback (A1, LSTM)
-  Samples.cs            DI riff synthesis, recording, sample player
   Analysis.cs, Synth.cs pitch and chord detection, reference notes and the metronome
   Tone3000.cs           TONE3000 client and window
   Songsterr.cs          Songsterr window: their Guitar Pro download goes straight into the tab library
@@ -232,8 +231,8 @@ native/                 the app: .NET 10, WinForms + WebView2, NAudio ASIO
   third_party/          NeuralAmpModelerCore (git submodule, with Eigen)
 public/                 the UI (HTML/CSS/JS, no build step), shared by the app and the web version
   js/modes/             Play (rig.js), exercises, tabs (tabs.js) and the tab library (tablib.js)
-  js/rig/               chain tiles, block panel, preset list, preset tones, sample player
-  js/presets.js         preset collections
+  js/rig/               browser, channel slots, block window, TONE3000 tones
+  js/presets.js         the starting chain and tone references
   vendor/alphatab/      alphaTab with three small fixes (see PATCHES.md), notation font, sound bank
 licenses/               license texts of third-party components (copied into every build)
 ```
@@ -250,5 +249,5 @@ core (MIT), Eigen (MPL 2.0), NAudio (MIT), WebView2 SDK, alphaTab (MPL 2.0), the
 sound bank (Apache 2.0); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Not affiliated with Arobas Music (Guitar Pro), TONE3000 or Songsterr. Guitar Pro is a trademark of Arobas Music; Poly
-Amp only opens its file formats. Amp and pedal names in presets and tone titles are trademarks of their
+Amp only opens its file formats. Amp and pedal names in tone titles are trademarks of their
 owners and are used only to describe the captured gear.

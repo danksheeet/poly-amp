@@ -1,13 +1,12 @@
-// Тоны TONE3000 в пресетах: найти уже скачанные в «Моих тонах», подставить их в цепочку,
-// скачать недостающие. Окно TONE3000 открывается только по кнопке, а не при выборе пресета.
+// Тоны TONE3000, которых цепочка ждёт по ссылке (так их сохраняли прежние версии с пресетами):
+// найти уже скачанные в «Моих тонах», подставить их в цепочку, скачать недостающие.
 
-/** Тон пресета однозначно задают номер и подсказка, какой вариант из него взять. */
+/** Тон однозначно задают номер и подсказка, какой вариант из него взять. */
 const toneKey = (t) => t.id + '|' + (t.match || '');
 
 export function createTones({ engine, chain, t3k }) {
   const fresh = new Map(); // toneId → путь: только что скачанное, пока не пришёл новый список библиотеки
   let busy = false;
-  let groupSeq = 0;
 
   /** Путь к уже скачанному файлу тона или null. */
   function findPath(tone) {
@@ -34,32 +33,7 @@ export function createTones({ engine, chain, t3k }) {
       return busy;
     },
 
-    /**
-     * Блоки пресета → блоки цепочки: скачанный тон ставится файлом, нескачанный заменяется
-     * встроенными блоками (alt), которые помнят, какой тон должны уступить.
-     */
-    expand(specs) {
-      const out = [];
-      for (const spec of specs) {
-        if (spec.tone && !spec.file) {
-          const path = findPath(spec.tone);
-          if (path) {
-            out.push({ type: spec.type, on: spec.on, size: spec.size, params: spec.params, tone: spec.tone, file: path });
-            continue;
-          }
-          if (spec.alt?.length) {
-            const group = 'g' + Date.now().toString(36) + ++groupSeq;
-            for (const a of spec.alt) out.push({ ...a, standIn: { type: spec.type, tone: spec.tone, params: spec.params, on: spec.on, size: spec.size, group } });
-            continue;
-          }
-        }
-        const { alt, ...rest } = spec;
-        out.push(rest);
-      }
-      return out;
-    },
-
-    /** Подставить в текущую цепочку всё, что уже скачано. Пресет при этом не считается изменённым. */
+    /** Подставить в текущую цепочку всё, что уже скачано (встроенные блоки-заместители уступают место тону). */
     resolve() {
       for (const b of chain.blocks()) {
         if (b.tone && !b.file) {
@@ -101,11 +75,6 @@ export function createTones({ engine, chain, t3k }) {
       return [...map.values()];
     },
 
-    /** Есть ли у пресета нескачанные тоны (для значка в списке пресетов). */
-    presetMissing(specs) {
-      return specs.some((s) => (s.tone && !s.file && !findPath(s.tone)) || (s.standIn && !findPath(s.standIn.tone)));
-    },
-
     /**
      * Скачать недостающие тоны текущей цепочки по одному. onState получает
      * { stage: 'progress', index, total, title } | { stage: 'done', errors, count } | { stage: 'canceled' }.
@@ -135,7 +104,7 @@ export function createTones({ engine, chain, t3k }) {
           }
           count++;
           fresh.set(toneKey(tone), r.path);
-          api.resolve(); // если пресет успели сменить, файл останется в «Моих тонах», а цепочку не трогаем
+          api.resolve(); // если блок успели убрать, файл останется в «Моих тонах», а цепочку не трогаем
         }
         onState({ stage: 'done', errors, count });
       } finally {

@@ -12,7 +12,7 @@ class Engine {
     this.listeners = {
       frame: new Set(), note: new Set(), onset: new Set(), state: new Set(),
       block: new Set(), picked: new Set(), t3k: new Set(), library: new Set(), // в браузере не срабатывают
-      samples: new Set(), sample: new Set(), pickedSample: new Set(), rec: new Set(), tabsLib: new Set(),
+      tabsLib: new Set(),
     };
     this.blockInfo = new Map();
     this.library = [];
@@ -288,11 +288,7 @@ class Engine {
   }
   pickFile() {}
   t3kSelect() {}
-  playSample() {}
   setBypass() {}
-  pickSample() {}
-  recStart() {}
-  recStop() {}
   // папка с табами доступна только приложению
   tabsLib() {}
   tabsLibPick() {}
