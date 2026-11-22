@@ -184,6 +184,10 @@ internal static class Tests
         try { ok &= TremoloTests(log); }
         catch (Exception ex) { ok = false; log.AppendLine("TREMOLO TEST ERROR: " + ex); }
 
+        // --- хост VST3 (без настоящего плагина: ошибки, разбор moduleinfo, блок без плагина) ---
+        try { ok &= Vst3Tests(log, outPath); }
+        catch (Exception ex) { ok = false; log.AppendLine("VST3 TEST ERROR: " + ex); }
+
         // --- нейромодели NAM и импульсы кабинета ---
         try { ok &= NamTests.Run(log); }
         catch (Exception ex) { ok = false; log.AppendLine("NAM TEST ERROR: " + ex); }
@@ -191,6 +195,70 @@ internal static class Tests
         log.AppendLine(ok ? "RESULT: OK" : "RESULT: FAIL");
         File.WriteAllText(outPath, log.ToString());
         return ok ? 0 : 1;
+    }
+
+    /// <summary>
+    /// Хост VST3: библиотека на месте, несуществующий модуль даёт понятную ошибку, а не падение;
+    /// moduleinfo.json читается; блок без плагина пропускает звук как есть.
+    /// </summary>
+    private static bool Vst3Tests(StringBuilder log, string outPath)
+    {
+        bool ok = true;
+        bool lib = Vst3Native.Available;
+        ok &= lib;
+        log.AppendLine($"vst3 host library: {(lib ? "found" : "MISSING")} {(lib ? "OK" : "FAIL")}");
+        if (!lib) return ok;
+
+        string missing = Path.Combine(Path.GetTempPath(), "polyamp-no-such-plugin.vst3");
+        string scan = Vst3Native.Scan(missing);
+        bool scanOk = scan.Contains("\"classes\":[]") && scan.Contains("\"error\":\"");
+        ok &= scanOk;
+        log.AppendLine($"vst3 scan of a missing module reports an error: {scan} {(scanOk ? "OK" : "FAIL")}");
+
+        string? err = Vst3Native.Load(missing, "ABCDEF019182FAEB5465544F48703039", out IntPtr h);
+        bool loadOk = h == IntPtr.Zero && !string.IsNullOrEmpty(err);
+        ok &= loadOk;
+        log.AppendLine($"vst3 load of a missing module fails cleanly: {err} {(loadOk ? "OK" : "FAIL")}");
+
+        // не DLL под видом плагина
+        string fake = outPath + ".fake.vst3";
+        File.WriteAllText(fake, "not a plugin");
+        err = Vst3Native.Load(fake, "ABCDEF019182FAEB5465544F48703039", out h);
+        File.Delete(fake);
+        bool fakeOk = h == IntPtr.Zero && !string.IsNullOrEmpty(err);
+        ok &= fakeOk;
+        log.AppendLine($"vst3 load of a broken file fails cleanly: {err} {(fakeOk ? "OK" : "FAIL")}");
+
+        // moduleinfo.json бандла: эффекты берутся, инструменты отсеиваются
+        string bundle = Path.Combine(Path.GetTempPath(), "polyamp-test-" + Guid.NewGuid().ToString("N") + ".vst3");
+        Directory.CreateDirectory(Path.Combine(bundle, "Contents", "Resources"));
+        File.WriteAllText(Path.Combine(bundle, "Contents", "Resources", "moduleinfo.json"), """
+            { "Name": "Test", "Factory Info": { "Vendor": "Acme", },
+              "Classes": [
+                { "CID": "ABCDEF019182FAEB5465544F48703039", "Category": "Audio Module Class", "Name": "Fuzz", "Sub Categories": ["Fx", "Distortion"], },
+                { "CID": "ABCDEF011234ABCD5465544F48703039", "Category": "Component Controller Class", "Name": "Fuzz Controller", },
+                { "CID": "11111111222222223333333344444444", "Category": "Audio Module Class", "Name": "Synth", "Vendor": "Other", "Sub Categories": ["Instrument", "Synth"], },
+              ] }
+            """);
+        List<Vst3Plugin>? info = Vst3Scanner.ReadModuleInfo(bundle);
+        Directory.Delete(bundle, true);
+        var effects = info?.Where(p => Vst3Scanner.IsEffect(p.Sub)).ToList();
+        bool miOk = info?.Count == 2 && effects?.Count == 1 && effects[0].Name == "Fuzz" && effects[0].Vendor == "Acme" && effects[0].Sub == "Fx|Distortion";
+        ok &= miOk;
+        log.AppendLine($"vst3 moduleinfo: {info?.Count ?? -1} audio classes, effects {string.Join(",", effects?.Select(e => e.Name + "/" + e.Vendor) ?? [])} {(miOk ? "OK" : "FAIL")}");
+
+        // блок, плагин которого не загрузился: стоит в цепочке и пропускает звук без изменений
+        var block = new Vst3Block { Id = "test-vst" };
+        block.Prepare(48000, 64);
+        block.Load(missing, "ABCDEF019182FAEB5465544F48703039");
+        float[] l = new float[64], r = new float[64];
+        for (int i = 0; i < 64; i++) { l[i] = MathF.Sin(i * 0.1f); r[i] = -l[i]; }
+        float[] l0 = (float[])l.Clone();
+        block.ProcessStereo(l, r);
+        bool passOk = block.Error != null && l.AsSpan().SequenceEqual(l0) && block.Handle == IntPtr.Zero;
+        ok &= passOk;
+        log.AppendLine($"vst3 block without its plugin passes audio through: error \"{block.Error}\" {(passOk ? "OK" : "FAIL")}");
+        return ok;
     }
 
     /// <summary>Тремоло: без глубины сигнал не меняется, на полной глубине громкость качается почти до нуля.</summary>

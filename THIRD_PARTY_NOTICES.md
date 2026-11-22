@@ -10,6 +10,7 @@ assets, in `public/vendor/alphatab`. In the app folder, the license texts, `LICE
 | [NeuralAmpModelerCore](https://github.com/sdatkinson/NeuralAmpModelerCore) 0.6.0 — Steven Atkinson | runs `.nam` models (built into `namcore.dll` / `namcore-sse2.dll`) | MIT | `licenses/NeuralAmpModelerCore-MIT.txt` |
 | [Eigen](https://gitlab.com/libeigen/eigen) | linear algebra inside the NAM library | MPL 2.0 | `licenses/Eigen-MPL-2.0.txt` |
 | [JSON for Modern C++](https://github.com/nlohmann/json) — Niels Lohmann | model files parsing inside the NAM library | MIT | `licenses/nlohmann-json-MIT.txt` |
+| [VST 3 SDK](https://github.com/steinbergmedia/vst3sdk) 3.8.1 — Steinberg Media Technologies (pluginterfaces, base, public.sdk) | hosting VST3 plugins (built into `vst3host.dll`) | MIT | `licenses/VST3-SDK-MIT.txt` |
 | [NAudio](https://github.com/naudio/NAudio) — Mark Heath | ASIO audio I/O | MIT | `licenses/NAudio-MIT.txt` |
 | [Microsoft Edge WebView2 SDK](https://www.nuget.org/packages/Microsoft.Web.WebView2) | the UI window | Microsoft (BSD-style) | `licenses/WebView2-SDK-LICENSE.txt`, `licenses/WebView2-SDK-NOTICE.txt` |
 | [.NET runtime](https://dotnet.microsoft.com/) (bundled in self-contained builds) | runtime | Microsoft .NET Library license | `licenses/dotnet-LICENSE.txt`, `licenses/dotnet-ThirdPartyNotices.txt` |

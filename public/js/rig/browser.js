@@ -1,5 +1,5 @@
-// Браузер слева, как в DAW: всё, что можно поставить в канал, — встроенные эффекты и тоны TONE3000
-// (уже скачанные и каталог). Строку перетаскивают в слот канала, или добавляют двойным кликом / кнопкой «+».
+// Браузер слева, как в DAW: всё, что можно поставить в канал, — встроенные эффекты, тоны TONE3000
+// (уже скачанные и каталог) и плагины VST3. Строку перетаскивают в слот канала, или добавляют двойным кликом / «+».
 import { BLOCKS, iconSvg } from '../blocks.js';
 import { safeImage } from './info.js';
 
@@ -30,10 +30,10 @@ export function createBrowser(host, { engine, store, t3k, onAdd }) {
     <div class="pb-tree" data-ref="tree" role="tree"></div>`;
   const q = host.querySelector('[data-ref="q"]');
   const tree = host.querySelector('[data-ref="tree"]');
-  const open = Object.assign({ builtin: true, t3k: true, amp: true, pedal: false, cab: false, space: false }, store.get('rig.browserOpen', {}));
+  const open = Object.assign({ builtin: true, t3k: true, amp: true, pedal: false, cab: false, space: false, vst3: true }, store.get('rig.browserOpen', {}));
 
   function folder(key, label, count, extra) {
-    const f = el('button', 'pb-fold' + (key === 't3k' ? ' is-cloud' : ''));
+    const f = el('button', 'pb-fold' + (key === 't3k' ? ' is-cloud' : key === 'vst3' ? ' is-vst' : ''));
     f.setAttribute('role', 'treeitem');
     f.setAttribute('aria-expanded', !!open[key]);
     f.append(el('i', 'pb-arrow'), el('span', 'pb-fold-name', label));
@@ -112,6 +112,7 @@ export function createBrowser(host, { engine, store, t3k, onAdd }) {
       }
     }
 
+    const afterBuiltin = nodes.length; // плагины VST3 встанут сразу после встроенных эффектов
     // облако TONE3000: скачанные тоны и каталог
     // так требуют условия API TONE3000: подпись и ссылка на их сайт — первой строкой открытой папки
     const powered = el('button', 'pb-link pb-powered', 'Powered by TONE3000');
@@ -154,8 +155,48 @@ export function createBrowser(host, { engine, store, t3k, onAdd }) {
         }
       }
     }
+
+    const vst = [];
+    // плагины VST3, установленные на компьютере (только в приложении)
+    if (native) {
+      const v = engine.vst3 || {};
+      const all = v.plugins || [];
+      const plugins = all.filter((p) => match(p.name, p.vendor, p.sub, 'vst3', 'plugin'));
+      if (!needle || plugins.length || match('vst3 plugins')) {
+        vst.push(folder('vst3', 'VST3 plugins', all.length || null));
+        if (open.vst3 || needle) {
+          const d = BLOCKS.vst3;
+          if (!v.available) vst.push(el('p', 'pb-note', 'The VST3 host (lib\\vst3host.dll) is missing from the app folder.'));
+          else if (!v.scanned && !v.scanning) {
+            vst.push(action('Find my plugins', 'looks for VST3 effects installed on this PC', d.color, () => engine.vst3Scan(false)));
+          } else {
+            for (const p of plugins) {
+              vst.push(item({
+                label: p.name, sub: p.vendor || 'VST3', color: d.color, icon: d.icon,
+                payload: { type: 'vst3', plugin: { path: p.path, cid: p.cid, name: p.name, vendor: p.vendor } },
+              }));
+            }
+            if (v.scanning) vst.push(el('p', 'pb-note', 'Looking for plugins…' + (v.progress ? ' ' + v.progress : '')));
+            else {
+              if (!all.length) vst.push(el('p', 'pb-note', `No VST3 effects found in ${v.folder || 'the VST3 folder'}.`));
+              if (v.failed?.length) vst.push(el('p', 'pb-note', 'Couldn’t load: ' + v.failed.join(', ')));
+              if (!needle) vst.push(action('Rescan plugins', 'after installing or updating a plugin', d.color, () => engine.vst3Scan(true)));
+            }
+          }
+        }
+      }
+    }
+    nodes.splice(afterBuiltin, 0, ...vst);
     if (!nodes.length) nodes.push(el('p', 'pb-note', 'Nothing found'));
     tree.replaceChildren(...nodes);
+  }
+
+  // строка-действие (не перетаскивается): найти плагины, пересканировать
+  function action(label, sub, color, fn) {
+    const r = item({ label, sub, color, icon: 'search', cls: 'is-browse' });
+    r.addEventListener('click', fn);
+    r.addEventListener('keydown', (e) => e.key === 'Enter' && fn());
+    return r;
   }
 
   q.addEventListener('input', render);
@@ -165,7 +206,10 @@ export function createBrowser(host, { engine, store, t3k, onAdd }) {
       render();
     }
   });
-  if (native) engine.on('library', render);
+  if (native) {
+    engine.on('library', render);
+    engine.on('vst3', render);
+  }
   render();
   return { render };
 }

@@ -1,3 +1,12 @@
 [submodule "native/third_party/NeuralAmpModelerCore"]
 	path = native/third_party/NeuralAmpModelerCore
 	url = https://github.com/sdatkinson/NeuralAmpModelerCore.git
+[submodule "native/third_party/vst3/pluginterfaces"]
+	path = native/third_party/vst3/pluginterfaces
+	url = https://github.com/steinbergmedia/vst3_pluginterfaces.git
+[submodule "native/third_party/vst3/base"]
+	path = native/third_party/vst3/base
+	url = https://github.com/steinbergmedia/vst3_base.git
+[submodule "native/third_party/vst3/public.sdk"]
+	path = native/third_party/vst3/public.sdk
+	url = https://github.com/steinbergmedia/vst3_public_sdk.git

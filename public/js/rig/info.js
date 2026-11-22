@@ -21,6 +21,16 @@ export const safeImage = (url) => (typeof url === 'string' && url.startsWith('ht
  */
 export function describeBlock(b, engine) {
   const def = BLOCKS[b.type];
+  if (def.plugin) {
+    const p = b.plugin;
+    const title = p?.name || def.name;
+    if (!p) return { title, sub: 'no plugin chosen', state: 'error' };
+    if (!engine.isNative) return { title, sub: 'plays only in the app', state: 'ok' };
+    const info = engine.blockInfo?.get(b.id);
+    if (info?.error) return { title, sub: info.error, state: 'error' };
+    if (info?.loaded) return { title, sub: (p.vendor ? p.vendor + ' · ' : '') + 'VST3', state: 'ok', latency: info.latency || 0 };
+    return { title, sub: 'loading…', state: 'loading' };
+  }
   if (def.file) {
     const info = engine.blockInfo?.get(b.id);
     if (b.file) {

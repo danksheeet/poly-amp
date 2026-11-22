@@ -12,10 +12,11 @@ class Engine {
     this.listeners = {
       frame: new Set(), note: new Set(), onset: new Set(), state: new Set(),
       block: new Set(), picked: new Set(), t3k: new Set(), library: new Set(), // в браузере не срабатывают
-      tabsLib: new Set(),
+      tabsLib: new Set(), vst3: new Set(), vst3Error: new Set(),
     };
     this.blockInfo = new Map();
     this.library = [];
+    this.vst3 = { available: false, scanned: false, scanning: false, progress: null, failed: [], folder: '', plugins: [] };
     this.ctx = null;
     this.stream = null;
     this.micSource = null;
@@ -288,6 +289,8 @@ class Engine {
   }
   pickFile() {}
   t3kSelect() {}
+  vst3Scan() {}
+  vst3Editor() {}
   setBypass() {}
   // папка с табами доступна только приложению
   tabsLib() {}

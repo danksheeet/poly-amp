@@ -93,9 +93,14 @@ Not yet: the app is built on Windows audio drivers (ASIO) and WebView2.
 The screen is laid out like a DAW mixer: the **browser** on the left, the **guitar channel** with insert slots in the
 middle (top to bottom: IN, the chain, OUT) and the selected slot's window with its knobs on the right.
 
-- **Browser**: built-in effects and **TONE3000 Cloud** (the tones you've downloaded plus **Browse the catalog…** for
-  amps, pedals, cabs and spaces). Search filters everything. Drag a row into a slot, or double-click it (Enter, “+”)
-  to add it after the selected slot.
+- **Browser**: built-in effects, your **VST3 plugins** and **TONE3000 Cloud** (the tones you've downloaded plus
+  **Browse the catalog…** for amps, pedals, cabs and spaces). Search filters everything. Drag a row into a slot, or
+  double-click it (Enter, “+”) to add it after the selected slot.
+- **VST3 plugins**: press **Find my plugins** once; the app lists the VST3 effects installed in
+  `C:\Program Files\Common Files\VST3` (instruments are skipped) and picks up new ones by itself afterwards, or on
+  **Rescan plugins**. A plugin opens in its own window when you add it; reopen it with **Open plugin window** or a
+  double-click on its slot. Its settings are saved automatically and come back next time. Plugins without their own
+  info file are probed in a separate process, so a broken plugin can't crash the app while scanning.
 - **Channel**: drag slots to reorder, the LED turns a block on and off, a click on an empty slot opens the add menu.
   The chain can be as long as you like. **IN and OUT** are global levels: input gain, output level and mute.
 - In a TONE3000 block, **TONE3000** opens their catalog in an app window, **File…** loads your own `.nam` or `.wav`,
@@ -181,7 +186,8 @@ Poly Amp is free and will stay free. If it helps you play, you can help it grow:
 ## Building from source
 
 Requirements: **Windows 10/11 x64**, the [.NET 10 SDK](https://dotnet.microsoft.com/download) and
-**Visual Studio 2022** (any edition) with the *Desktop development with C++* workload (for the NAM library).
+**Visual Studio 2022** (any edition) with the *Desktop development with C++* workload (for the NAM library and the
+VST3 host).
 
 ```bash
 git clone --recursive https://github.com/danksheeet/poly-amp.git
@@ -189,8 +195,8 @@ cd poly-amp
 build.bat
 ```
 
-`build.bat` builds the NAM library once (`native\namcore\build.bat`, two variants: AVX2 and SSE2) and publishes a
-self-contained app into `dist`. Run `dist\PolyAmp.exe`, or zip `dist` to share it. If you cloned without
+`build.bat` builds the NAM library (`native\namcore\build.bat`, two variants: AVX2 and SSE2) and the VST3 host
+(`native\vst3host\build.bat`) once, then publishes a self-contained app into `dist`. Run `dist\PolyAmp.exe`, or zip `dist` to share it. If you cloned without
 `--recursive`, run `git submodule update --init --recursive` first.
 
 There's also a **web version** of the UI for trying the exercises without installing anything: `npm start` (or
@@ -203,7 +209,8 @@ The app has headless self-tests that write a report to a file:
 
 ```
 PolyAmp.exe --dsptest out.txt      effects chain, note and chord recognition, ASIO sample formats, buffer sizes,
-                                   NAM models (both library variants) checked against a reference implementation
+                                   NAM models (both library variants) checked against a reference implementation,
+                                   the VST3 host (error handling, plugin info files)
 PolyAmp.exe --asiotest out.txt     opens the first ASIO driver that works (or: --asiotest out.txt "Driver name") for a few
                                    seconds with the output muted and measures the callback
 PolyAmp.exe --sstest out.txt       Songsterr window: saving downloads into the library, duplicates, file names
@@ -223,16 +230,17 @@ native/                 the app: .NET 10, WinForms + WebView2, NAudio ASIO
   Dsp.cs, LongConvolver.cs, Ir.cs   filters, delay, reverb, FFT convolution, impulse responses
   Nam.cs, NativeNam.cs  .nam models: the official NAM library (namcore.dll) and a built-in fallback (A1, LSTM)
   Analysis.cs, Synth.cs pitch and chord detection, reference notes and the metronome
+  Vst3.cs               VST3 plugins: the bridge to vst3host.dll, the chain block, scanning, plugin windows
   Tone3000.cs           TONE3000 client and window
   Songsterr.cs          Songsterr window: their Guitar Pro download goes straight into the tab library
   MainForm.cs           the window and messaging with the UI
   Tests.cs, NamTests.cs self-tests
   namcore/              C wrapper around the NAM library and its build script
-  third_party/          NeuralAmpModelerCore (git submodule, with Eigen)
+  vst3host/             C wrapper around the VST3 SDK hosting classes and its build script
+  third_party/          NeuralAmpModelerCore (with Eigen) and the VST3 SDK (git submodules)
 public/                 the UI (HTML/CSS/JS, no build step), shared by the app and the web version
   js/modes/             Play (rig.js), exercises, tabs (tabs.js) and the tab library (tablib.js)
-  js/rig/               browser, channel slots, block window, TONE3000 tones
-  js/presets.js         the starting chain and tone references
+  js/rig/               browser, channel slots, block window, TONE3000 tones (js/blocks.js: block types, starting chain)
   vendor/alphatab/      alphaTab with three small fixes (see PATCHES.md), notation font, sound bank
 licenses/               license texts of third-party components (copied into every build)
 ```
@@ -248,6 +256,6 @@ Poly Amp is released under the [MIT License](LICENSE). It uses third-party compo
 core (MIT), Eigen (MPL 2.0), NAudio (MIT), WebView2 SDK, alphaTab (MPL 2.0), the Bravura font (OFL) and the Sonivox
 sound bank (Apache 2.0); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Not affiliated with Arobas Music (Guitar Pro), TONE3000 or Songsterr. Guitar Pro is a trademark of Arobas Music; Poly
-Amp only opens its file formats. Amp and pedal names in tone titles are trademarks of their
-owners and are used only to describe the captured gear.
+Not affiliated with Arobas Music (Guitar Pro), Steinberg, TONE3000 or Songsterr. Guitar Pro is a trademark of Arobas
+Music; Poly Amp only opens its file formats. VST is a registered trademark of Steinberg Media Technologies GmbH. Amp
+and pedal names in tone titles are trademarks of their owners and are used only to describe the captured gear.

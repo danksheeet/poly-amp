@@ -35,7 +35,7 @@ function seg(options, value, onPick, cls = '') {
   return s;
 }
 
-export function createDetail(host, { chain, engine, store, t3k, tones, onSelect, onDownload, onUserFile, getDownload = () => null }) {
+export function createDetail(host, { chain, engine, store, t3k, tones, onSelect, onDownload, onUserFile, getDownload = () => null, getPluginError = () => null }) {
   host.classList.add('detail');
   const native = engine.isNative;
   let knobs = {}; // имя параметра → ручка, чтобы обновлять без перерисовки
@@ -259,10 +259,33 @@ export function createDetail(host, { chain, engine, store, t3k, tones, onSelect,
     return row;
   }
 
+  // плагин VST3: ручки у него в собственном окне — здесь кнопка, чтобы его открыть, и сведения
+  function renderPlugin(b, info) {
+    const d = BLOCKS[b.type];
+    const nodes = [head(d.color, d.icon, info.title, el('span', '', info.sub), tools(b))];
+    const area = el('div', 'dt-plugin');
+    const open = button('Open plugin window', 'btn-t3k dt-open', () => engine.vst3Editor(b.id), 'The plugin’s own window with all its controls (double-click the slot works too)');
+    open.disabled = !native || info.state !== 'ok';
+    area.append(open);
+    const bits = [];
+    if (b.plugin?.vendor) bits.push(b.plugin.vendor);
+    if (info.latency && engine.audio?.sampleRate) bits.push(`latency ${((info.latency / engine.audio.sampleRate) * 1000).toFixed(1)} ms`);
+    if (bits.length) area.append(el('span', 'dt-meta', bits.join(' · ')));
+    nodes.push(area);
+    const err = getPluginError(b.id);
+    if (info.state === 'error') nodes.push(el('p', 'dt-note warn', info.sub));
+    else if (err) nodes.push(el('p', 'dt-note warn', err));
+    if (!native) nodes.push(el('p', 'dt-note', 'VST3 plugins load and play in the Poly Amp app.'));
+    else nodes.push(el('p', 'dt-note', 'The plugin’s settings are saved by themselves and come back next time.'));
+    host.classList.toggle('is-off', !b.on);
+    host.replaceChildren(...nodes);
+  }
+
   function renderBlock(b) {
     knobs = {};
     const d = BLOCKS[b.type];
     const info = describeBlock(b, engine);
+    if (d.plugin) return renderPlugin(b, info);
     const sub = el('span', '', d.file ? d.role : info.sub === d.role ? d.role : `${d.role} · ${info.sub}`);
     const nodes = [head(d.color, d.icon, d.file ? d.name : info.title, sub, tools(b))];
     if (d.file) nodes.push(toneArea(b, info));

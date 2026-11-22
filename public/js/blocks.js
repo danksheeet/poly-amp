@@ -23,6 +23,7 @@ const ICONS = {
   reverb: '<circle cx="5.500" cy="12" r="1.300"/><path d="M10 8.500a5 5 0 0 1 0 7M13.500 6a9 9 0 0 1 0 12M17 3.500a13 13 0 0 1 0 17"/>',
   space: '<path d="M11 4l1.700 4.800L17.500 10.500l-4.800 1.700L11 17l-1.700-4.800L4.500 10.500l4.800-1.700zM18 15l.800 2.200L21 18l-2.200.800L18 21l-.800-2.200L15 18l2.200-.800z"/>',
   search: '<circle cx="11" cy="11" r="6.500"/><path d="M16 16l4.500 4.500"/>',
+  plug: '<path d="M9 3v5M15 3v5M6.500 8h11v3.500a5.500 5.500 0 0 1-11 0zM12 17v4"/>',
 };
 export const iconSvg = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.pedal}</svg>`;
@@ -116,6 +117,11 @@ export const BLOCKS = {
     empty: 'Reverb, room or hall — pick an IR on TONE3000',
     params: { mix: { label: 'Mix', min: 0, max: 1, def: 0.3, fmt: pct(1) } },
   },
+  // плагин VST3 другого разработчика: свои ручки он показывает в собственном окне
+  vst3: {
+    name: 'VST3 plugin', role: 'VST3 plugin', tag: 'VST3', icon: 'plug', group: 'vst3', color: '#22d3ee', plugin: true,
+    params: {},
+  },
 };
 
 /** Цепочка при первом запуске: британский кранч на встроенных блоках, звучит сразу, без скачиваний. */
@@ -157,12 +163,20 @@ export function makeBlock(type, init = {}) {
     tone: BLOCKS[type].file ? cleanTone(init.tone) : null,
     params: { ...defaultParams(type), ...(init.params || {}) },
   };
+  // плагин VST3: модуль, класс и подписи (само состояние плагина хранит приложение, по id блока)
+  if (BLOCKS[type].plugin) block.plugin = cleanPlugin(init.plugin);
   // встроенный блок, который временно играет вместо нескачанного тона пресета
   const s = init.standIn;
   if (s && BLOCKS[s.type]?.file && cleanTone(s.tone)) {
     block.standIn = { type: s.type, tone: cleanTone(s.tone), params: { ...(s.params || {}) }, on: s.on !== false, size: s.size ?? 1, group: String(s.group || '') };
   }
   return block;
+}
+
+function cleanPlugin(p) {
+  return p && typeof p.path === 'string' && typeof p.cid === 'string'
+    ? { path: p.path, cid: p.cid, name: String(p.name || 'VST3 plugin'), vendor: String(p.vendor || '') }
+    : null;
 }
 
 function cleanTone(t) {

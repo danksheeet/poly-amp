@@ -90,6 +90,7 @@ internal abstract class Block
         "delay" => new DelayBlock(),
         "reverb" => new ReverbBlock(),
         "space" => new SpaceBlock(),
+        "vst3" => new Vst3Block(), // в AllTypes его нет: прогревать без плагина нечего
         _ => null,
     };
 

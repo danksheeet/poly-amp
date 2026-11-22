@@ -200,8 +200,9 @@ internal sealed class AudioEngine : IDisposable
 
     // ---------- цепочка блоков ----------
 
-    /// <summary>Описание блока, как его присылает интерфейс.</summary>
-    public sealed record BlockSpec(string Id, string Type, bool On, string? File, Dictionary<string, float> Params, double Size);
+    /// <summary>Описание блока, как его присылает интерфейс. Для VST3: File — модуль, Cid — класс плагина.</summary>
+    public sealed record BlockSpec(string Id, string Type, bool On, string? File, Dictionary<string, float> Params, double Size,
+        string? Cid = null, string? Name = null, string? Vendor = null);
 
     /// <summary>Частота, на которой сейчас идёт обработка (48 кГц, пока драйвер не открыт).</summary>
     public float SampleRate => sampleRate;
@@ -223,23 +224,34 @@ internal sealed class AudioEngine : IDisposable
     /// <summary>
     /// Применить цепочку из интерфейса. Блоки с прежним id сохраняют состояние (хвосты ревера, модель),
     /// новые создаются и готовятся здесь же, в потоке интерфейса; аудиопоток получает готовый массив.
+    /// Блоки, которые ушли из цепочки, попадают в removed: плагины VST3 выгружает ReleaseRemoved.
     /// </summary>
-    public List<Block> ApplyChain(IReadOnlyList<BlockSpec> specs)
+    public List<Block> ApplyChain(IReadOnlyList<BlockSpec> specs, List<Block>? removed = null)
     {
+        var old = new HashSet<Block>(blocksById.Values);
         var next = new List<Block>();
         foreach (BlockSpec spec in specs)
         {
-            if (!blocksById.TryGetValue(spec.Id, out Block? b) || b.Type != spec.Type)
+            // другой плагин под тем же id — это новый блок (старый выгрузится, когда аудиопоток его отпустит)
+            bool reuse = blocksById.TryGetValue(spec.Id, out Block? b) && b.Type == spec.Type
+                && !(b is Vst3Block vb && (vb.RequestedFile != spec.File || vb.Cid != spec.Cid));
+            if (!reuse)
             {
                 b = Block.Create(spec.Type);
                 if (b == null) continue;
                 b.Id = spec.Id;
                 b.Prepare(sampleRate, chain.MaxBlock);
+                if (b is Vst3Block nv)
+                {
+                    nv.PluginName = spec.Name;
+                    nv.Vendor = spec.Vendor;
+                    nv.Load(spec.File, spec.Cid);
+                }
                 blocksById[spec.Id] = b;
             }
-            foreach (var kv in spec.Params) b.SetParam(kv.Key, kv.Value);
-            b.On = spec.On;
-            if (b.FileKind != null)
+            foreach (var kv in spec.Params) b!.SetParam(kv.Key, kv.Value);
+            b!.On = spec.On;
+            if (b.FileKind != null && b is not Vst3Block)
             {
                 b.SetSize(spec.Size);
                 if (spec.File != b.RequestedFile) LoadBlockFile(b, spec.File);
@@ -248,7 +260,45 @@ internal sealed class AudioEngine : IDisposable
         }
         foreach (string id in blocksById.Keys.Except(next.Select(b => b.Id)).ToList()) blocksById.Remove(id);
         chain.SetBlocks(next.ToArray());
+        if (removed != null)
+        {
+            var kept = new HashSet<Block>(next);
+            removed.AddRange(old.Where(x => !kept.Contains(x)));
+        }
         return next;
+    }
+
+    /// <summary>Выгрузить плагины ушедших блоков, когда аудиопоток точно перестал их вызывать.</summary>
+    public void ReleaseRemoved(IEnumerable<Block> removed)
+    {
+        var plugins = removed.OfType<Vst3Block>().Where(v => v.Handle != IntPtr.Zero).ToList();
+        if (plugins.Count == 0) return;
+        WaitForCallbacks();
+        foreach (Vst3Block v in plugins)
+        {
+            v.SaveState();
+            v.Release();
+        }
+    }
+
+    /// <summary>При выходе: сохранить состояние всех плагинов и выгрузить их (звук уже закрыт).</summary>
+    public void ReleaseAllPlugins()
+    {
+        chain.SetBlocks([]);
+        WaitForCallbacks();
+        foreach (Vst3Block v in blocksById.Values.OfType<Vst3Block>())
+        {
+            v.SaveState();
+            v.Release();
+        }
+    }
+
+    private void WaitForCallbacks()
+    {
+        if (!IsOpen) return;
+        long c = Interlocked.Read(ref Callbacks);
+        var sw = Stopwatch.StartNew();
+        while (IsOpen && Interlocked.Read(ref Callbacks) < c + 2 && sw.ElapsedMilliseconds < 300) Thread.Sleep(1);
     }
 
     public Block? GetBlock(string id) => blocksById.GetValueOrDefault(id);

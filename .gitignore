@@ -4,6 +4,9 @@ native/bin/
 native/obj/
 native/namcore/bin/
 native/namcore/obj/
+native/vst3host/bin/
+native/vst3host/obj/
+native/vst3host/build.log
 
 # editors and tools
 .vs/

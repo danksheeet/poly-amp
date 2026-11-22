@@ -99,7 +99,10 @@ internal sealed class MainForm : Form
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         closing = true;
+        vst3Timer?.Stop();
+        foreach (PluginWindow w in pluginWindows.Values.ToList()) w.Close();
         engine.Dispose();
+        engine.ReleaseAllPlugins();
         base.OnFormClosing(e);
     }
 
@@ -128,6 +131,21 @@ internal sealed class MainForm : Form
                     SendBlocks();
                     SendT3kStatus();
                     SendLibrary();
+                    SendVst3();
+                    // искали плагины раньше — подхватим новые; впервые поиск запускает сам пользователь
+                    if (Vst3Scanner.HasCache) _ = Vst3ScanAsync(false);
+                    if (vst3Timer == null)
+                    {
+                        vst3Timer = new System.Windows.Forms.Timer { Interval = 1500 };
+                        vst3Timer.Tick += (_, _) => Vst3Tick();
+                        vst3Timer.Start();
+                    }
+                    break;
+                case "vst3Scan":
+                    _ = Vst3ScanAsync(Int(m, "force") != 0);
+                    break;
+                case "vst3Editor":
+                    OpenPluginWindow(Str(m, "id"));
                     break;
                 case "open":
                     Open(m.GetProperty("driver").GetString() ?? "", Int(m, "inCh"), Int(m, "outCh"), Int(m, "rate"));
@@ -514,12 +532,109 @@ internal sealed class MainForm : Form
             if (b.TryGetProperty("params", out JsonElement pe) && pe.ValueKind == JsonValueKind.Object)
                 foreach (JsonProperty p in pe.EnumerateObject())
                     if (p.Value.ValueKind == JsonValueKind.Number) ps[p.Name] = p.Value.GetSingle();
-            string file = Str(b, "file");
+            string file = Str(b, "file"), cid = Str(b, "cid");
             specs.Add(new AudioEngine.BlockSpec(Str(b, "id"), Str(b, "type"), Int(b, "on", 1) != 0,
-                file.Length > 0 ? file : null, ps, Num(b, "size", 1)));
+                file.Length > 0 ? file : null, ps, Num(b, "size", 1),
+                cid.Length > 0 ? cid : null, Str(b, "name"), Str(b, "vendor")));
         }
-        engine.ApplyChain(specs);
+        var removed = new List<Block>();
+        engine.ApplyChain(specs, removed);
+        // окна ушедших плагинов закрываем до выгрузки самих плагинов
+        foreach (Block r in removed)
+            if (pluginWindows.TryGetValue(r.Id, out PluginWindow? w) && w.Block == r) w.Close();
+        engine.ReleaseRemoved(removed);
         SendBlocks();
+    }
+
+    // ---------- плагины VST3 ----------
+
+    private readonly Dictionary<string, PluginWindow> pluginWindows = new();
+    private List<Vst3Plugin> vst3Plugins = [];
+    private List<string> vst3Failed = [];
+    private bool vst3Scanning;
+    private string? vst3Progress;
+    private System.Windows.Forms.Timer? vst3Timer;
+
+    private void SendVst3() => Post(JsonSerializer.Serialize(new
+    {
+        t = "vst3",
+        available = Vst3Native.Available,
+        scanned = Vst3Scanner.HasCache,
+        scanning = vst3Scanning,
+        progress = vst3Progress,
+        failed = vst3Failed,
+        folder = Vst3Scanner.Folders().First(),
+        plugins = vst3Plugins.Select(p => new { path = p.Path, cid = p.Cid, name = p.Name, vendor = p.Vendor, sub = p.Sub }),
+    }));
+
+    /// <summary>Найти установленные эффекты VST3 (force — заново все, иначе только новые и изменившиеся).</summary>
+    private async Task Vst3ScanAsync(bool force)
+    {
+        if (vst3Scanning || !Vst3Native.Available) { SendVst3(); return; }
+        vst3Scanning = true;
+        vst3Progress = null;
+        SendVst3();
+        try
+        {
+            var (plugins, failed) = await Vst3Scanner.ScanAsync(force, (done, total, name) => BeginInvoke(() =>
+            {
+                vst3Progress = $"{Math.Min(done + 1, total)} of {total}: {name}";
+                SendVst3();
+            }));
+            vst3Plugins = plugins;
+            vst3Failed = failed;
+        }
+        catch (Exception ex) { vst3Failed = [ex.Message]; }
+        finally
+        {
+            vst3Scanning = false;
+            vst3Progress = null;
+            SendVst3();
+        }
+    }
+
+    private void OpenPluginWindow(string id)
+    {
+        if (pluginWindows.TryGetValue(id, out PluginWindow? open))
+        {
+            if (open.WindowState == FormWindowState.Minimized) open.WindowState = FormWindowState.Normal;
+            open.Activate();
+            return;
+        }
+        if (engine.GetBlock(id) is not Vst3Block b || b.Handle == IntPtr.Zero) return;
+        var win = new PluginWindow(b);
+        _ = win.Handle; // окно создано, но ещё не показано: плагин встраивается и задаёт размер
+        string? err = win.Attach();
+        if (err != null)
+        {
+            win.Dispose();
+            Post(JsonSerializer.Serialize(new { t = "vst3Error", id, error = err }));
+            return;
+        }
+        win.Closed2 += w => pluginWindows.Remove(w.BlockId);
+        pluginWindows[id] = win;
+        Rectangle area = Screen.FromControl(this).WorkingArea;
+        win.StartPosition = FormStartPosition.Manual;
+        win.Location = new Point(
+            Math.Clamp(Left + (Width - win.Width) / 2, area.Left, Math.Max(area.Left, area.Right - win.Width)),
+            Math.Clamp(Top + (Height - win.Height) / 2, area.Top, Math.Max(area.Top, area.Bottom - win.Height)));
+        win.Show(this);
+    }
+
+    /// <summary>Раз в полторы секунды: сохранить изменившиеся состояния плагинов и сообщить об упавших.</summary>
+    private void Vst3Tick()
+    {
+        foreach (Vst3Block v in engine.Blocks.OfType<Vst3Block>().ToList())
+        {
+            if (v.Crashed && !v.CrashReported)
+            {
+                v.CrashReported = true;
+                v.Error = "The plugin crashed and was switched off. Remove it from the chain or restart the app.";
+                if (pluginWindows.TryGetValue(v.Id, out PluginWindow? w)) w.Close();
+                SendBlock(v);
+            }
+            else if (!v.Crashed && v.TakeDirty()) v.SaveState();
+        }
     }
 
     /// <summary>Что известно о файлах блоков: загрузился ли, что это за модель или импульс, откуда он.</summary>

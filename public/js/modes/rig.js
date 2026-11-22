@@ -1,6 +1,6 @@
-// Область «Play», как в DAW: слева браузер эффектов и тонов TONE3000, посередине канал со слотами,
+// Область «Play», как в DAW: слева браузер эффектов, тонов TONE3000 и плагинов VST3, посередине канал со слотами,
 // справа окно выбранного блока с его ручками. Цепочка любая: сколько угодно педалей, усилителей,
-// кабинетов и ревербераторов в любом порядке — встроенных или с TONE3000.
+// кабинетов и ревербераторов в любом порядке — встроенных, с TONE3000 или плагинами VST3.
 import { BLOCKS } from '../blocks.js';
 import { createBrowser } from '../rig/browser.js';
 import { createSlots } from '../rig/slots.js';
@@ -50,11 +50,16 @@ export function createRig(root, { engine, store, chain, t3k }) {
   // ---------- добавление из браузера и меню слота ----------
   // после того как пользователь сам поставил модель усилителя, проверим, нет ли в ней кабинета
   const cabCheck = new Set();
+  // только что поставленный плагин VST3: когда загрузится, сразу открываем его окно, как в DAW
+  const openOnLoad = new Set();
+  const pluginErrors = new Map(); // id блока → почему окно плагина не открылось
   function add(payload, at) {
     if (!payload || !BLOCKS[payload.type]) return;
     const index = at ?? (chain.get(selected) ? chain.index(selected) + 1 : chain.blocks().length);
-    const id = chain.add(payload.type, index, payload.file ? { file: payload.file } : {});
+    const init = payload.plugin ? { plugin: payload.plugin } : payload.file ? { file: payload.file } : {};
+    const id = chain.add(payload.type, index, init);
     if (payload.file) cabCheck.add(id);
+    if (payload.plugin && native) openOnLoad.add(id);
   }
 
   // ---------- тоны, которые цепочка ждёт с TONE3000 (встроенный блок пока играет вместо них) ----------
@@ -75,6 +80,7 @@ export function createRig(root, { engine, store, chain, t3k }) {
     onDownload: download,
     onUserFile: (id) => cabCheck.add(id),
     getDownload: () => dl,
+    getPluginError: (id) => pluginErrors.get(id) || null,
   });
 
   chain.on((what, d) => {
@@ -92,6 +98,10 @@ export function createRig(root, { engine, store, chain, t3k }) {
 
   if (native) {
     engine.on('block', (m) => {
+      if (openOnLoad.has(m.id) && (m.loaded || m.error)) {
+        openOnLoad.delete(m.id);
+        if (m.loaded) engine.vst3Editor(m.id);
+      }
       slots.render();
       if (m.id === selected) detail.render(selected);
       // модель «усилитель + кабинет»: отдельные кабинеты после неё выключаем, чтобы не было двойного кабинета
@@ -105,6 +115,10 @@ export function createRig(root, { engine, store, chain, t3k }) {
           }
         }
       }
+    });
+    engine.on('vst3Error', (m) => {
+      pluginErrors.set(m.id, m.error);
+      if (m.id === selected) detail.render(selected);
     });
     engine.on('library', () => {
       tones.resolve();

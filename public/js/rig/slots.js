@@ -95,9 +95,17 @@ export function createSlots(host, { chain, engine, getSelected, onSelect, onAdd 
     const ic = el('span', 'slot-ic');
     ic.innerHTML = iconSvg(d.icon);
     const txt = el('span', 'slot-txt');
-    txt.append(el('b', '', info.title), el('small', '', d.file ? d.name.toLowerCase() + (info.state === 'ok' ? '' : ' · ' + info.sub) : d.role));
+    const sub = d.plugin ? info.sub : d.file ? d.name.toLowerCase() + (info.state === 'ok' ? '' : ' · ' + info.sub) : d.role;
+    txt.append(el('b', '', info.title), el('small', '', sub));
     s.append(el('span', 'slot-no', String(i + 1)), led, ic, txt);
     if (d.group === 't3k') s.append(el('span', 'slot-tag', 'T3K'));
+    if (d.plugin) {
+      s.append(el('span', 'slot-tag', 'VST3'));
+      // двойной клик по плагину — его окно, как в DAW
+      s.addEventListener('dblclick', (e) => {
+        if (!e.target.closest('.slot-led') && info.state === 'ok') engine.vst3Editor?.(b.id);
+      });
+    }
     if (info.state === 'standin' || info.state === 'pending' || info.state === 'empty' || info.state === 'error') {
       s.append(el('span', 'slot-badge ' + (info.state === 'error' ? 'bad' : 'warn'), info.state === 'standin' ? 'stand-in' : info.state === 'pending' ? 'download' : info.state));
     }

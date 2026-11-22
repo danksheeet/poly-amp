@@ -20,6 +20,8 @@ class NativeEngine {
       songsterrSaved: new Set(),
       t3k: new Set(),
       library: new Set(),
+      vst3: new Set(),
+      vst3Error: new Set(),
     };
     this.tracker = new NoteTracker((type, data) => this.emit(type, data));
     this.frame = { rms: 0, level: 0, freq: null, midi: null, clarity: 0, note: null, active: false };
@@ -34,6 +36,8 @@ class NativeEngine {
     this.toneRequests = new Map(); // ожидающие загрузки тонов для пресетов: reqId → resolve
     this.toneSeq = 0;
     this.library = []; // «Мои тоны»: скачанное с TONE3000
+    // установленные эффекты VST3: { available, scanned, scanning, progress, failed, folder, plugins: [{ path, cid, name, vendor, sub }] }
+    this.vst3 = { available: false, scanned: false, scanning: false, progress: null, failed: [], folder: '', plugins: [] };
     this.t3k = { hasKey: false };
     this.lastChroma = null;
     this.ctx = null;
@@ -127,6 +131,13 @@ class NativeEngine {
       case 'library':
         this.library = m.items || [];
         this.emit('library', this.library);
+        break;
+      case 'vst3':
+        this.vst3 = { available: !!m.available, scanned: !!m.scanned, scanning: !!m.scanning, progress: m.progress || null, failed: m.failed || [], folder: m.folder || '', plugins: m.plugins || [] };
+        this.emit('vst3', this.vst3);
+        break;
+      case 'vst3Error':
+        this.emit('vst3Error', m);
         break;
       case 't3k':
         if (m.stage === 'status') this.t3k = { hasKey: !!m.hasKey };
@@ -267,6 +278,18 @@ class NativeEngine {
   }
 
   /** Открыть страницу TONE3000 в обычном браузере. */
+  // ---------- VST3 ----------
+
+  /** Найти установленные эффекты VST3 (force — заново все); ответ — событие «vst3». */
+  vst3Scan(force = false) {
+    this.post({ t: 'vst3Scan', force: force ? 1 : 0 });
+  }
+
+  /** Открыть окно плагина блока (отдельное окно приложения). */
+  vst3Editor(id) {
+    this.post({ t: 'vst3Editor', id });
+  }
+
   openUrl(url) {
     this.post({ t: 'openUrl', url });
   }

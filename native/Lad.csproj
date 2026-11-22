@@ -29,7 +29,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
     <!-- исходники сторонней библиотеки и её сборка — не часть проекта C# -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);third_party/**;namcore/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);third_party/**;namcore/**;vst3host/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -46,6 +46,8 @@
   <ItemGroup>
     <Content Include="namcore/bin/namcore.dll" Condition="Exists('namcore/bin/namcore.dll')" Link="lib\namcore.dll" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <Content Include="namcore/bin/namcore-sse2.dll" Condition="Exists('namcore/bin/namcore-sse2.dll')" Link="lib\namcore-sse2.dll" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <!-- Хост плагинов VST3 (собирается vst3host/build.bat) -->
+    <Content Include="vst3host/bin/vst3host.dll" Condition="Exists('vst3host/bin/vst3host.dll')" Link="lib\vst3host.dll" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <!-- Лицензия приложения и тексты лицензий сторонних компонентов — в каждой сборке, в папке licenses -->

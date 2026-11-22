@@ -26,6 +26,10 @@ jobs:
         shell: cmd
         run: native\namcore\build.bat
 
+      - name: Build the VST3 host library
+        shell: cmd
+        run: native\vst3host\build.bat
+
       - name: Build Poly Amp (self-contained)
         run: dotnet publish native\Lad.csproj -c Release -p:Platform=x64 -o dist --nologo
 

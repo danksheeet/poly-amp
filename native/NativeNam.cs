@@ -47,8 +47,7 @@ internal sealed unsafe class NativeNam : NamModel
 
     private static bool SetResolver()
     {
-        NativeLibrary.SetDllImportResolver(typeof(NativeNam).Assembly, (name, _, _) =>
-            name == Dll && NativeLibrary.TryLoad(fullPath, out IntPtr h) ? h : IntPtr.Zero);
+        NativeLibs.Init(fullPath);
         return true;
     }
 

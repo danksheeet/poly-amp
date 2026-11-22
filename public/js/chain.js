@@ -42,7 +42,12 @@ export function createChain(engine, store, initialBlocks) {
     return Math.max(d.min, Math.min(d.max, v));
   };
   /** Цепочка в том виде, в каком её ждёт движок. */
-  const wire = () => blocks.map((b) => ({ id: b.id, type: b.type, on: b.on ? 1 : 0, file: b.file, size: b.size, params: b.params }));
+  const wire = () =>
+    blocks.map((b) => {
+      const w = { id: b.id, type: b.type, on: b.on ? 1 : 0, file: b.file, size: b.size, params: b.params };
+      if (b.plugin) Object.assign(w, { file: b.plugin.path, cid: b.plugin.cid, name: b.plugin.name, vendor: b.plugin.vendor });
+      return w;
+    });
   const pushAll = () => engine.setChain(wire());
   const changed = (what, detail) => {
     pushAll();
