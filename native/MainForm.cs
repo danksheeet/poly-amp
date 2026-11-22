@@ -246,6 +246,9 @@ internal sealed class MainForm : Form
                 case "tabsOpen":
                     OpenTabExternally(Str(m, "rel"));
                     break;
+                case "tabsDelete":
+                    DeleteTabs(Int(m, "reqId"), m.GetProperty("rels"));
+                    break;
                 case "songsterr":
                     _ = OpenSongsterrAsync(Str(m, "url"), Str(m, "q"));
                     break;
@@ -367,7 +370,7 @@ internal sealed class MainForm : Form
                 }
                 return list;
             });
-            Post(JsonSerializer.Serialize(new { t = "tabsLib", dir = root, items }));
+            Post(JsonSerializer.Serialize(new { t = "tabsLib", dir = root, items, recycle = HasRecycleBin(root) }));
         }
         catch (Exception ex)
         {
@@ -390,13 +393,78 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>Путь внутри папки библиотеки или null, если он ведёт наружу.</summary>
-    private static string? InsideTabsRoot(string rel)
+    private static string? InsideTabsRoot(string rel) => TabsRoot() is { } root ? InsideRoot(root, rel) : null;
+
+    internal static string? InsideRoot(string root, string rel)
     {
-        string? root = TabsRoot();
-        if (root == null || rel.Length == 0) return null;
+        if (rel.Length == 0) return null;
         string full = Path.GetFullPath(Path.Combine(root, rel));
         return full.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ? full : null;
     }
+
+    /// <summary>Корзина есть у локальных дисков; на флешке и сетевой папке удалённое пропадает насовсем.</summary>
+    private static bool HasRecycleBin(string root)
+    {
+        try { return new DriveInfo(Path.GetPathRoot(root)!).DriveType == DriveType.Fixed; }
+        catch (ArgumentException) { return false; } // \\server\share
+    }
+
+    /// <summary>Удалить песню из библиотеки: её файлы (табы и PDF) уходят в Корзину. Потом список перечитывается.</summary>
+    private void DeleteTabs(int reqId, JsonElement relsEl)
+    {
+        var rels = relsEl.ValueKind == JsonValueKind.Array ? relsEl.EnumerateArray().Select(x => x.GetString() ?? "").ToList() : [];
+        string? root = TabsRoot();
+        var (ok, error, canceled) = root == null ? (false, "Choose your tabs folder first.", false) : RecycleTabs(root, rels, Handle);
+        Post(JsonSerializer.Serialize(new { t = "tabsDeleted", reqId, ok, canceled, error }));
+        _ = SendTabsLibrary();
+    }
+
+    /// <summary>
+    /// Файлы библиотеки — в Корзину. Только форматы табов и PDF и только внутри папки библиотеки;
+    /// если на диске нет Корзины, Windows сама спросит, удалить ли насовсем.
+    /// </summary>
+    internal static (bool ok, string? error, bool canceled) RecycleTabs(string root, IEnumerable<string> rels, IntPtr owner, bool dryRun = false)
+    {
+        var files = new List<string>();
+        foreach (string rel in rels)
+        {
+            string? full = InsideRoot(root, rel);
+            string ext = full == null ? "" : Path.GetExtension(full).ToLowerInvariant();
+            if (full == null || !(TabFormats.Contains(ext) || ext == ".pdf")) return (false, "Only tab files inside your library can be deleted here.", false);
+            if (File.Exists(full)) files.Add(full);
+        }
+        if (files.Count == 0 || dryRun) return (true, null, false); // уже нет на диске — значит, удалено
+        var op = new ShFileOp
+        {
+            hwnd = owner,
+            wFunc = FO_DELETE,
+            pFrom = string.Join('\0', files) + "\0\0",
+            fFlags = FOF_SILENT | FOF_NOCONFIRMATION | FOF_ALLOWUNDO | FOF_NOERRORUI | FOF_WANTNUKEWARNING,
+        };
+        int rc = SHFileOperation(ref op);
+        if (op.fAnyOperationsAborted) return (false, null, true);
+        if (rc != 0) return (false, $"Couldn't move the file to the Recycle Bin (error {rc}). Is it open in another program?", false);
+        return (true, null, false);
+    }
+
+    private const uint FO_DELETE = 3;
+    private const ushort FOF_SILENT = 0x4, FOF_NOCONFIRMATION = 0x10, FOF_ALLOWUNDO = 0x40, FOF_NOERRORUI = 0x400, FOF_WANTNUKEWARNING = 0x4000;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct ShFileOp
+    {
+        public IntPtr hwnd;
+        public uint wFunc;
+        public string pFrom;
+        public string? pTo;
+        public ushort fFlags;
+        [MarshalAs(UnmanagedType.Bool)] public bool fAnyOperationsAborted;
+        public IntPtr hNameMappings;
+        public string? lpszProgressTitle;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "SHFileOperationW")]
+    private static extern int SHFileOperation(ref ShFileOp op);
 
     /// <summary>Прочитать таб из библиотеки: только форматы табов и только внутри выбранной папки.</summary>
     private void ReadTab(int reqId, string rel)

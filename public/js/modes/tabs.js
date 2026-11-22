@@ -6,7 +6,7 @@ import { noteName, noteOctave } from '../music.js';
 import { templateFromMidis } from '../chroma.js';
 import { icon } from '../icons.js';
 import { Fretboard } from '../fretboard.js';
-import { createTabLibrary } from './tablib.js';
+import { createTabLibrary, parseName } from './tablib.js';
 import { setTabReverb } from './tabreverb.js';
 
 const VENDOR = 'vendor/alphatab/';
@@ -88,6 +88,14 @@ async function dbPut(name, data) {
     await new Promise((r) => (tx.oncomplete = tx.onerror = r));
   } catch {}
 }
+async function dbDelete(name) {
+  try {
+    const db = await openDb();
+    const tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').delete(name);
+    await new Promise((r) => (tx.oncomplete = tx.onerror = r));
+  } catch {}
+}
 async function dbGet(name) {
   return (await dbAll()).find((x) => x.name === name) || null;
 }
@@ -128,10 +136,9 @@ export function createTabs(root, { engine, store, chain }) {
     <aside class="tb-lib" data-ref="lib" aria-label="Tab library"></aside>
     <div class="tb">
       <div class="tb-top">
-        <button class="ib" data-ref="libBtn" aria-pressed="false" title="Library: tabs from your folder" aria-label="Library">${icon('library')}</button>
+        <button class="ib" data-ref="libBtn" aria-pressed="false" title="Library: tabs from your folder and recent files" aria-label="Library">${icon('library')}</button>
         <button class="btn btn-primary tb-open" data-ref="open" title="Open a Guitar Pro or MusicXML file (Ctrl+O)">${icon('folder')}<span>Open</span></button>
         <input type="file" accept="${ACCEPT}" data-ref="input" hidden>
-        <button class="ib" data-ref="recentBtn" title="Recent tabs" aria-label="Recent tabs" aria-haspopup="true">${icon('recent')}</button>
         <div class="tb-song"><b data-ref="title"></b><span data-ref="artist"></span></div>
         <button class="tb-trackbtn" data-ref="trackBtn" aria-haspopup="true" title="Tracks: which one to show and play, volume of the others" hidden></button>
         <div class="seg tb-modes" data-ref="mode" hidden>
@@ -139,7 +146,7 @@ export function createTabs(root, { engine, store, chain }) {
           <button data-v="along" title="The tab plays while the app listens to your guitar and marks hits (2)">${icon('guitar')}<span>Play along</span></button>
           <button data-v="wait" title="The cursor waits until you play the right note (3)">${icon('wait')}<span>Wait for me</span></button>
         </div>
-        <button class="ib" data-ref="songsterr" hidden title="${engine.isNative ? 'Songsterr: find a song and download its Guitar Pro file straight into your library. Tip: copy a song link and press Ctrl+V here' : 'Find this song on Songsterr (opens in your browser)'}" aria-label="Songsterr">${icon(engine.isNative ? 'download' : 'external')}</button>
+        <button class="ib" data-ref="songsterr" hidden title="Find this song on Songsterr (opens in your browser)" aria-label="Find on Songsterr">${icon('external')}</button>
       </div>
 
       <div class="tb-transport" data-ref="transport" hidden>
@@ -186,8 +193,8 @@ export function createTabs(root, { engine, store, chain }) {
           </div>
           <form class="tb-ss" data-ref="ssForm">
             ${engine.isNative
-              ? `<div><b>Get it from Songsterr.</b> Copy a song link there and press <kbd>Ctrl</kbd>+<kbd>V</kbd> here — or type a band or song below.
-                 The window asks you to sign in to Songsterr once, then shows the song: press the download button and choose <b>Guitar Pro</b> — the file goes straight into your library and opens here.</div>
+              ? `<div><b>Get it from Songsterr.</b> Paste a song link (<kbd>Ctrl</kbd>+<kbd>V</kbd>) or type a song. Sign in to Songsterr once,
+                 then press their download button and choose <b>Guitar Pro</b>: the tab lands in your library and opens here.</div>
 
                  <div class="tb-ss-row"><input class="text-input" data-ref="ssQuery" placeholder="Songsterr link, band or song" spellcheck="false"><button class="btn btn-primary">${icon('download')} Open Songsterr</button></div>`
               : `<div><b>No file?</b> Find the song on Songsterr — you can view and hear tabs there in your browser.</div>
@@ -561,7 +568,7 @@ export function createTabs(root, { engine, store, chain }) {
       showError(friendlyError('unsupported format')); // в том числе .gp5, который модуль табов не смог прочитать
       return;
     }
-    dbPut(name, data);
+    if (!key?.startsWith('lib:')) dbPut(name, data).then(refreshRecent);
   }
 
   /** Таб из библиотеки: файл читает приложение (только внутри выбранной папки). */
@@ -581,8 +588,20 @@ export function createTabs(root, { engine, store, chain }) {
     engine,
     store,
     onOpen: (rel, title) => openFromLibrary(rel, title).catch(() => {}),
-    onSongsterr: () => songsterr(),
+    onSongsterr: (text) => songsterrText(text),
+    onOpenOutside: async (name) => {
+      const f = await dbGet(name);
+      if (f) openBytes(f.name, f.data).catch(() => {});
+      else refreshRecent();
+    },
+    onForgetOutside: (name) => dbDelete(name),
+    onDeleted: ({ ok, recycled, title, error }) => toast(ok ? (recycled ? 'Moved to the Recycle Bin: ' : 'Deleted: ') + title : error || 'Couldn’t delete the file.'),
   });
+  /** Недавние файлы (открытые кнопкой Open или перетаскиванием) — в раздел «Recent» библиотеки. */
+  function refreshRecent() {
+    return dbAll().then((list) => library.setRecent(list.map(({ name, opened }) => ({ name, opened }))));
+  }
+  refreshRecent();
 
   function setLibOpen(on) {
     opts.lib = on;
@@ -625,7 +644,7 @@ export function createTabs(root, { engine, store, chain }) {
     ref.trackBtn.hidden = false;
     ref.title.textContent = s.title || (fileName ? fileTitle : '') || 'Untitled';
     ref.artist.textContent = s.artist ? ' — ' + s.artist : '';
-    ref.songsterr.hidden = !engine.isNative && (!fileName || !(s.title || s.artist)); // в браузере для своего примера искать нечего
+    ref.songsterr.hidden = engine.isNative || !fileName || !(s.title || s.artist); // в приложении Songsterr — в библиотеке; для примера искать нечего
     ref.time.textContent = '0:00';
     ref.bar.style.transform = 'scaleX(0)';
     loadMix();
@@ -1043,24 +1062,6 @@ export function createTabs(root, { engine, store, chain }) {
     ref.input.value = '';
   });
 
-  ref.recentBtn.addEventListener('click', async () => {
-    const list = await dbAll();
-    openPop(ref.recentBtn, (box) => {
-      box.classList.add('tb-recent');
-      box.append(el('div', 'tb-pop-head', 'Recent tabs'));
-      if (!list.length) box.append(el('p', 'tb-pop-note', 'Files you open will show up here.'));
-      for (const f of list) {
-        const b = el('button', 'tb-recent-item');
-        b.append(el('b', '', f.name.replace(/\.(gpx?|gp\d|musicxml|mxl|xml)$/i, '')), el('small', '', new Date(f.opened).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })));
-        b.addEventListener('click', () => {
-          closePop();
-          openBytes(f.name, f.data).catch(() => {});
-        });
-        box.append(b);
-      }
-    });
-  });
-
   ref.trackBtn.addEventListener('click', () => score && openPop(ref.trackBtn, buildMixer));
 
   ref.profile.addEventListener('click', () => {
@@ -1233,14 +1234,19 @@ export function createTabs(root, { engine, store, chain }) {
     if (engine.isNative) return engine.songsterr(url, q);
     window.open(url || 'https://www.songsterr.com/?pattern=' + encodeURIComponent(q.trim()), '_blank', 'noopener');
   }
-  ref.ssForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const v = ref.ssQuery.value.trim();
+  /** Ссылка, название песни или пусто (тогда — главная Songsterr). false — в браузере искать нечего. */
+  function songsterrText(text) {
+    const v = (text || '').trim();
     const link = v.match(SS_LINK)?.[0];
     if (link) songsterr({ url: link });
     else if (v) songsterr({ q: v });
     else if (engine.isNative) songsterr();
-    else ref.ssQuery.focus();
+    else return false;
+    return true;
+  }
+  ref.ssForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!songsterrText(ref.ssQuery.value)) ref.ssQuery.focus();
   });
   ref.songsterr.addEventListener('click', () => {
     // открыт таб из файла — сразу ищем эту песню; иначе — главная Songsterr
@@ -1259,8 +1265,10 @@ export function createTabs(root, { engine, store, chain }) {
   if (engine.isNative) {
     engine.on('songsterrSaved', (m) => {
       if (!opts.lib) setLibOpen(true);
-      toast('Added to your library: Songsterr / ' + m.name);
-      openFromLibrary(m.rel, m.name).catch(() => {});
+      library.markNew(m.rel);
+      const n = parseName(m.name); // «Metallica-Master of Puppets-11-13-2026» → «Master of Puppets», «Metallica»
+      toast('Added to your library: ' + (n.artist ? n.title + ' — ' + n.artist : n.title));
+      openFromLibrary(m.rel, n.title).catch(() => {});
     });
   }
   let toastTimer = null;
@@ -1287,7 +1295,7 @@ export function createTabs(root, { engine, store, chain }) {
     openFile(f).catch(() => {});
   });
 
-  ref.songsterr.hidden = !engine.isNative; // в приложении кнопка Songsterr есть всегда
+  ref.songsterr.hidden = true; // в браузере появляется, когда открыт файл с названием песни
   shell.classList.toggle('lib-open', !!opts.lib);
   ref.libBtn.setAttribute('aria-pressed', !!opts.lib);
   ref.zoomOut.disabled = opts.zoom <= ZOOMS[0];

@@ -188,6 +188,10 @@ internal static class Tests
         try { ok &= Vst3Tests(log, outPath); }
         catch (Exception ex) { ok = false; log.AppendLine("VST3 TEST ERROR: " + ex); }
 
+        // --- удаление из библиотеки табов: только файлы табов внутри папки (без настоящей Корзины) ---
+        try { ok &= TabDeleteTests(log); }
+        catch (Exception ex) { ok = false; log.AppendLine("TAB DELETE TEST ERROR: " + ex); }
+
         // --- нейромодели NAM и импульсы кабинета ---
         try { ok &= NamTests.Run(log); }
         catch (Exception ex) { ok = false; log.AppendLine("NAM TEST ERROR: " + ex); }
@@ -195,6 +199,35 @@ internal static class Tests
         log.AppendLine(ok ? "RESULT: OK" : "RESULT: FAIL");
         File.WriteAllText(outPath, log.ToString());
         return ok ? 0 : 1;
+    }
+
+    /// <summary>
+    /// Удаление песни из библиотеки пропускает только файлы табов и PDF внутри папки библиотеки:
+    /// путь наружу, чужое расширение — отказ. Проверка «всухую», файлы в Корзину не уходят.
+    /// </summary>
+    private static bool TabDeleteTests(StringBuilder log)
+    {
+        string root = Path.Combine(Path.GetTempPath(), "polyamp-tabdel-test");
+        Directory.CreateDirectory(Path.Combine(root, "Songsterr"));
+        File.WriteAllText(Path.Combine(root, "Songsterr", "Band-Song-01-02-2026.gp"), "x");
+        bool ok = true;
+        foreach (var (rels, want, label) in new (string[], bool, string)[]
+        {
+            (["Songsterr\\Band-Song-01-02-2026.gp"], true, "tab inside the library"),
+            (["Songsterr\\Band-Song-01-02-2026.gp", "Songsterr\\Band-Song.pdf"], true, "tab and a PDF that is already gone"),
+            (["..\\outside.gp"], false, "path outside the library"),
+            (["Songsterr\\..\\..\\outside.gp"], false, "path that climbs out"),
+            (["Songsterr\\notes.txt"], false, "not a tab file"),
+            (["Songsterr\\Band-Song-01-02-2026.gp", "C:\\Windows\\win.ini"], false, "one bad path in the list"),
+        })
+        {
+            var (got, _, _) = MainForm.RecycleTabs(root, rels, IntPtr.Zero, dryRun: true);
+            bool pass = got == want;
+            ok &= pass;
+            log.AppendLine($"tab delete: {label} -> {(got ? "allowed" : "refused")} {(pass ? "OK" : "FAIL")}");
+        }
+        try { Directory.Delete(root, true); } catch (IOException) { }
+        return ok;
     }
 
     /// <summary>

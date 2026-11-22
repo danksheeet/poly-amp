@@ -116,7 +116,8 @@ class NativeEngine {
       case 'songsterrSaved':
         this.emit('songsterrSaved', m);
         break;
-      case 'tabsFile': {
+      case 'tabsFile':
+      case 'tabsDeleted': {
         const done = this.fileRequests.get(m.reqId);
         this.fileRequests.delete(m.reqId);
         if (done) done(m);
@@ -224,6 +225,18 @@ class NativeEngine {
         resolve({ ok: true, name: m.name, rel: m.rel, data });
       });
       this.post({ t: 'tabsRead', reqId, rel });
+    });
+  }
+
+  /**
+   * Удалить песню из библиотеки: файлы уходят в Корзину. После этого приходит свежий список «tabsLib».
+   * @returns {Promise<{ok:boolean, canceled?:boolean, error?:string}>}
+   */
+  tabsDelete(rels) {
+    return new Promise((resolve) => {
+      const reqId = ++this.fileSeq;
+      this.fileRequests.set(reqId, resolve);
+      this.post({ t: 'tabsDelete', reqId, rels });
     });
   }
 

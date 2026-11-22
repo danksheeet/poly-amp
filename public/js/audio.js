@@ -300,6 +300,9 @@ class Engine {
 
   }
   tabsOpen() {}
+  tabsDelete() {
+    return Promise.resolve({ ok: false, error: 'The library works in the Poly Amp app.' });
+  }
   t3kLoadTone() {
     return Promise.resolve({ ok: false, canceled: true });
   }

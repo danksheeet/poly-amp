@@ -36,6 +36,11 @@ const P = {
   tab: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8M8 15h8M8 18h8" stroke-width="1.100"/><circle cx="10.500" cy="12" r="1.100" fill="currentColor" stroke="none"/><circle cx="13.500" cy="15" r="1.100" fill="currentColor" stroke="none"/>',
   search: '<circle cx="10.500" cy="10.500" r="6.500"/><path d="M20 20l-4.500-4.500"/>',
   strings: '<path d="M9 18V5.500l11-2.500v13"/><circle cx="6.500" cy="18" r="2.500"/><circle cx="17.500" cy="16" r="2.500"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  close: '<path d="M6.500 6.500l11 11M17.500 6.500l-11 11"/>',
+  check: '<path d="M5 12.500l4.500 4.500L19 7.500"/>',
+  sort: '<path d="M7 4.500v15"/><path d="M3.500 16l3.500 3.500 3.500-3.500"/><path d="M13.500 6h7M13.500 11h5M13.500 16h3"/>',
+  trash: '<path d="M4 6.500h16"/><path d="M9.500 6.500V4.800a.8.8 0 0 1 .8-.8h3.400a.8.8 0 0 1 .8.8v1.700"/><path d="M6 6.500l.9 12.700a1.500 1.500 0 0 0 1.500 1.400h7.200a1.500 1.500 0 0 0 1.500-1.400L18 6.500"/><path d="M10 10.500v6M14 10.500v6"/>',
 };
 
 /** SVG-иконка разметкой; cls — дополнительный класс. */
