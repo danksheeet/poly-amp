@@ -7,6 +7,7 @@ import { templateFromMidis } from '../chroma.js';
 import { icon } from '../icons.js';
 import { Fretboard } from '../fretboard.js';
 import { createTabLibrary, parseName } from './tablib.js';
+import { createHighway, buildTimeline, LEVELS } from './highway.js';
 import { setTabReverb } from './tabreverb.js';
 
 const VENDOR = 'vendor/alphatab/';
@@ -165,6 +166,8 @@ export function createTabs(root, { engine, store, chain }) {
         <button class="ib" data-ref="countIn" aria-pressed="false" title="Count-in bar before playback (C)">${icon('countIn')}</button>
         <span class="tb-sep"></span>
         <button class="ib" data-ref="volBtn" title="Tab volume and reverb" aria-haspopup="true"></button>
+        <button class="ib" data-ref="hwBtn" aria-pressed="false" title="Highway: the notes fly toward a fretboard, play each one as it reaches the strings (H)" aria-label="Highway">${icon('highway')}</button>
+        <div class="seg seg-sm tb-levels" data-ref="levels" hidden title="How many notes the highway shows: start easy, add notes as you get it. Auto: each part of the song has its own level — it goes up when you play the part cleanly and down when you miss a lot">${[...LEVELS, 'Auto'].map((n, i) => `<button data-l="${i + 1}">${n}</button>`).join('')}</div>
         <button class="ib" data-ref="profile" aria-pressed="false" title="Show notation above the tab (N)" aria-label="Notation above the tab">${icon('staff')}</button>
         <button class="ib" data-ref="zoomOut" title="Smaller (Ctrl+−)" aria-label="Smaller">${icon('zoomOut')}</button>
         <button class="ib" data-ref="zoomIn" title="Larger (Ctrl++)" aria-label="Larger">${icon('zoomIn')}</button>
@@ -208,6 +211,7 @@ export function createTabs(root, { engine, store, chain }) {
         <div class="tb-loading" data-ref="loading" hidden>Loading…</div>
       </div>
 
+      <div class="tb-hw" data-ref="hw" hidden></div>
       <div class="tb-fret" data-ref="fret" hidden></div>
       <div class="tb-pop" data-ref="pop" hidden></div>
       <div class="tb-toast" data-ref="toast" role="status" hidden></div>
@@ -219,7 +223,7 @@ export function createTabs(root, { engine, store, chain }) {
   const shell = root.querySelector('.tb-shell');
 
   const opts = Object.assign(
-    { volume: 70, speed: 100, loop: false, metro: false, countIn: false, mode: 'listen', profile: 'tab', zoom: 1, fret: false, lib: engine.isNative, reverb: 40 },
+    { volume: 70, speed: 100, loop: false, metro: false, countIn: false, mode: 'listen', profile: 'tab', zoom: 1, fret: false, lib: engine.isNative, reverb: 40, view: 'tab', level: 2 },
     store.get('tabs.opts', {})
   );
   const saveOpts = () => store.set('tabs.opts', opts);
@@ -238,6 +242,9 @@ export function createTabs(root, { engine, store, chain }) {
   let endTime = 0;
   let mix = { vol: {}, mute: {}, solo: {} }; // по номеру дорожки
   const marks = new Map(); // доля → 'hit' | 'miss'
+  // часы для «Highway»: последняя позиция плеера, когда она сдвинулась и сдвинулась ли с начала игры
+  // (в отсчёте перед стартом плеер уже играет, а позиция стоит — дорога ждёт вместе с ней)
+  const clockPos = { tick: 0, at: 0, moved: false };
   const stats = { hit: 0, total: 0, streak: 0, best: 0 };
   const songKey = () => fileKey || fileName || 'demo';
 
@@ -345,6 +352,7 @@ export function createTabs(root, { engine, store, chain }) {
     });
     api.playerStateChanged.on((e) => {
       playing = e.state === 1;
+      clockPos.moved = false;
       syncTransport();
       runTicker(playing && opts.mode === 'along');
       if (!playing) closeAllPending();
@@ -353,6 +361,12 @@ export function createTabs(root, { engine, store, chain }) {
     let shown = { time: '', total: '', bar: '' };
     api.playerPositionChanged.on((e) => {
       endTime = e.endTime;
+      if (e.currentTick !== clockPos.tick) {
+        if (e.currentTick < clockPos.tick - 1920) finishPhrase(); // петля или перемотка назад: проход части закончен
+        clockPos.moved = playing;
+        clockPos.tick = e.currentTick;
+        clockPos.at = performance.now();
+      }
       const time = clock(e.currentTime);
       const total = clock(e.endTime);
       const bar = (e.endTime ? Math.min(1, e.currentTime / e.endTime) : 0).toFixed(3);
@@ -361,12 +375,14 @@ export function createTabs(root, { engine, store, chain }) {
       if (bar !== shown.bar) ref.bar.style.transform = `scaleX(${(shown.bar = bar)})`;
     });
     api.playedBeatChanged.on(onPlayedBeat);
+    api.playerFinished.on(() => opts.mode === 'along' && showSummary());
     // какие дорожки сейчас звучат: alphaTab сообщает о каждой сыгранной ноте, синхронно со звуком
     api.midiEventsPlayedFilter = [AT.midi.MidiEventType.NoteOn];
     api.midiEventsPlayed.on(onNotesPlayed);
     // звук готов один раз на всё время, а разметка долей по времени — заново для каждой песни
     api.midiLoaded.on(() => {
       applyMix();
+      rebuildTimeline();
       if (opts.mode === 'wait' && ready) startWait();
     });
     api.beatMouseDown.on((beat) => opts.mode === 'wait' && jumpTo(beat));
@@ -650,7 +666,9 @@ export function createTabs(root, { engine, store, chain }) {
     loadMix();
     // дорожка, которую ты сам выбрал для этой песни, иначе — первая гитара
     const saved = store.get('tabs.pick.' + songKey(), null);
+    clockPos.tick = 0;
     selectTrack(saved != null && s.tracks[saved] ? saved : defaultTrack(s));
+    applyView();
   }
 
   /** Дорожка по умолчанию — основная гитара. В файлах Songsterr у вокала тоже есть табулатура и шесть «струн»,
@@ -700,8 +718,86 @@ export function createTabs(root, { engine, store, chain }) {
     applyMix();
     syncTransport(); // например, значок «ноты над табом» неактивен у дорожки без таба
     setupFretboard();
+    rebuildTimeline();
     if (opts.mode === 'wait' && ready) startWait();
   }
+
+  // ---------- «Highway»: ноты летят к грифу ----------
+  let timeline = null;
+  const highway = createHighway(ref.hw, { getClock: hwClock, getStats: () => stats });
+  highway.setLevel(opts.level);
+  /** Уровень сложности дороги: сколько нот показывать. «Играть вместе» и «Жди меня» ждут только видимые. */
+  function setLevel(l) {
+    opts.level = l;
+    saveOpts();
+    highway.setLevel(l);
+    marks.clear();
+    resetStats();
+    highway.clearMarks();
+    if (opts.mode === 'wait' && ready) startWait();
+    syncTransport();
+  }
+  ref.levels.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (b) setLevel(+b.dataset.l);
+  });
+  /** Время для дороги: последняя позиция плеера плюс сколько прошло с её прихода (сообщения идут неровно). */
+  function hwClock() {
+    const toMs = timeline?.toMs;
+    if (!toMs || !api) return { ms: 0, playing: false, speed: 1 };
+    const speed = api.playbackSpeed || 1;
+    if (!playing) return { ms: toMs(api.tickPosition), playing: false, speed };
+    if (!clockPos.moved) return { ms: toMs(clockPos.tick), playing: false, speed }; // отсчёт или начало игры
+    return { ms: toMs(clockPos.tick) + Math.min(250, (performance.now() - clockPos.at) * speed), playing: true, speed };
+  }
+  /** Ноты дорожки по времени: после загрузки звука (тогда готова разметка тиков) и при смене дорожки. */
+  function rebuildTimeline() {
+    const lookup = api?.tickCache;
+    // сразу после открытия файла разметка тиков ещё от прошлой песни — ждём midiLoaded
+    if (!lookup || !track || lookup.masterBars?.[0]?.masterBar?.score !== score) return;
+    timeline = buildTimeline(lookup, track);
+    highway.setTimeline(timeline);
+    loadPhraseLevels();
+    if (waitCur) highway.setWait(waitCur.exp.beat, waitCur.r.start);
+  }
+  const highwayOn = () => opts.view === 'highway' && !!score;
+  function applyView() {
+    const on = highwayOn();
+    tb.classList.toggle('is-highway', on);
+    ref.hw.hidden = !on;
+    ref.hwBtn.setAttribute('aria-pressed', opts.view === 'highway');
+    if (on) placeHighway();
+    highway.setActive(on && active);
+    setupFretboard();
+    syncTransport();
+  }
+  function setView(v) {
+    // дороге нужно место: библиотека прячется, а после выхода возвращается, если была открыта
+    if (v === 'highway' && opts.view !== 'highway' && opts.lib) {
+      opts.libBack = true;
+      setLibOpen(false);
+    } else if (v === 'tab' && opts.libBack) {
+      opts.libBack = false;
+      setLibOpen(true);
+    }
+    opts.view = v;
+    saveOpts();
+    applyView();
+    // лист снова виден — alphaTab дорисовывает его под нынешнюю ширину
+    if (v === 'tab' && api && score) requestAnimationFrame(() => api.render());
+  }
+  /** Дорога лежит поверх листа (лист остаётся на месте: alphaTab считает по нему курсор и прокрутку). */
+  function placeHighway() {
+    Object.assign(ref.hw.style, {
+      top: ref.scroll.offsetTop + 'px',
+      left: ref.scroll.offsetLeft + 'px',
+      width: ref.scroll.offsetWidth + 'px',
+      height: ref.scroll.offsetHeight + 'px',
+    });
+    highway.refresh();
+  }
+  new ResizeObserver(() => highwayOn() && placeHighway()).observe(ref.scroll);
+  ref.hwBtn.addEventListener('click', () => setView(opts.view === 'highway' ? 'tab' : 'highway'));
 
   /** «Играть вместе» удобнее без своей партии: её сыграешь ты. */
   function muteOwnTrack() {
@@ -716,7 +812,7 @@ export function createTabs(root, { engine, store, chain }) {
   let fb = null;
   const fretFits = () => (track?.staves[0]?.tuning?.length || 0) === 6;
   function setupFretboard() {
-    const show = opts.fret && !!track;
+    const show = opts.fret && !!track && !highwayOn(); // у дороги свой гриф
     tb.classList.toggle('has-fret', show);
     ref.fret.hidden = !show;
     ref.fretBtn.setAttribute('aria-pressed', !!opts.fret);
@@ -741,15 +837,23 @@ export function createTabs(root, { engine, store, chain }) {
   }
 
   // ---------- что нужно сыграть на доле ----------
-  function expected(beat) {
+  /** tick — где доля игралась: на дороге с неполным уровнем ждём только видимые в этом проходе ноты. */
+  function expected(beat, tick) {
     if (!beat || beat.isRest || beat.graceType !== 0 || beat.voice?.bar?.staff?.track !== track) return null;
-    const notes = beat.notes.filter((n) => !n.isDead && !n.isTieDestination && n.isVisible !== false && !n.isPercussion);
+    let notes = beat.notes.filter((n) => !n.isDead && !n.isTieDestination && n.isVisible !== false && !n.isPercussion);
+    // засчитывается любая нота доли: на лёгком уровне от аккорда видна одна нижняя, а сыграть весь аккорд не ошибка —
+    // распознавание в аккорде часто слышит квинту или октаву, а не нижнюю ноту
+    const accept = notes.map((n) => n.realValue);
+    if (highwayOn() && opts.level !== 4 && tick != null) {
+      const shown = highway.shownNotes(beat, tick);
+      if (shown) notes = notes.filter((n) => shown.has(n));
+    }
     if (!notes.length) return null;
     const midis = notes.map((n) => n.realValue);
-    return { beat, notes, midis, template: midis.length >= 3 ? templateFromMidis(midis) : null };
+    return { beat, notes, midis, accept, template: midis.length >= 3 ? templateFromMidis(midis) : null };
   }
 
-  const matchNote = (exp, midi) => exp.midis.some((m) => m === midi || Math.abs(m - midi) === 12); // октавные ошибки распознавания прощаем
+  const matchNote = (exp, midi) => (exp.accept || exp.midis).some((m) => m === midi || Math.abs(m - midi) === 12); // октавные ошибки распознавания прощаем
 
   function chordScore(exp) {
     const c = engine.chroma();
@@ -831,8 +935,11 @@ export function createTabs(root, { engine, store, chain }) {
     else Object.assign(m.style, { left: v.x + v.w / 2 + 'px', top: v.y - 10 + 'px' });
     ref.marks.append(m);
   }
-  function mark(beat, kind) {
+  /** tick — где доля игралась: у повторов одна доля стоит в нескольких местах песни (нужно дороге). */
+  function mark(beat, kind, tick) {
     marks.set(beat, kind);
+    highway.mark(beat, kind, tick);
+    notePhrase(kind, tick);
     stats.total++;
     if (kind === 'hit') {
       stats.hit++;
@@ -845,6 +952,10 @@ export function createTabs(root, { engine, store, chain }) {
   }
   function resetStats() {
     Object.assign(stats, { hit: 0, total: 0, streak: 0, best: 0 });
+    phraseRun.clear();
+    phraseNow = -1;
+    phraseLog = [];
+    hideSummary();
     pending.length = 0;
     renderStats();
   }
@@ -856,6 +967,90 @@ export function createTabs(root, { engine, store, chain }) {
     ref.accBar.classList.toggle('is-bad', stats.total > 0 && pct < 50);
   }
 
+  // ---------- части песни: итог каждой, «Auto» и итог песни ----------
+  // Часть закончилась (пошли отметки следующей, перемотка назад, конец песни) — над дорогой её точность.
+  // На «Auto» у каждой части свой уровень: 90 % и больше — уровень выше, меньше 50 % — ниже; хранится для песни и дорожки.
+  const phraseRun = new Map(); // часть → { hit, total } в этом проходе
+  let phraseNow = -1;
+  let phraseLog = []; // { i, text, pct, level } — для итога песни
+  let phraseLevels = [];
+  const autoKey = () => `tabs.auto.${songKey()}.${track?.index ?? 0}`;
+  function loadPhraseLevels() {
+    const saved = store.get(autoKey(), null);
+    phraseLevels = (timeline?.phrases || []).map((_, i) => Math.max(1, Math.min(4, (saved && saved[i]) | 0 || 1)));
+    highway.setPhraseLevels(phraseLevels);
+  }
+  function phraseAt(tick) {
+    const ps = timeline?.phrases || [];
+    let i = 0;
+    while (i + 1 < ps.length && ps[i + 1].tick <= tick + 1) i++;
+    return i;
+  }
+  function notePhrase(kind, tick) {
+    if (!timeline?.phrases?.length || tick == null) return;
+    const ph = phraseAt(tick);
+    if (ph !== phraseNow) finishPhrase();
+    phraseNow = ph;
+    const r = phraseRun.get(ph) || { hit: 0, total: 0 };
+    r.total++;
+    if (kind === 'hit') r.hit++;
+    phraseRun.set(ph, r);
+  }
+  function finishPhrase() {
+    const i = phraseNow;
+    phraseNow = -1;
+    const r = phraseRun.get(i);
+    phraseRun.delete(i);
+    const ph = timeline?.phrases?.[i];
+    if (!r || !ph || r.total < 3) return;
+    const pct = Math.round((r.hit / r.total) * 100);
+    let text = `${ph.text}: ${pct} %`;
+    // уровень меняется, только если часть сыграна почти целиком, а не задета перемоткой; в петле на выделенных
+    // тактах — почти вся выделенная её доля
+    const rg = opts.loop ? api?.playbackRange : null;
+    const need = highway.phraseBeats(i, rg ? rg.startTick : -Infinity, rg ? rg.endTick : Infinity);
+    if (opts.level === 5 && need > 0 && r.total >= 0.6 * need) {
+      const was = phraseLevels[i] || 1;
+      const next = pct >= 90 ? Math.min(4, was + 1) : pct < 50 ? Math.max(1, was - 1) : was;
+      if (next !== was) {
+        phraseLevels[i] = next;
+        store.set(autoKey(), phraseLevels);
+        highway.setPhraseLevels(phraseLevels);
+        text += ` · ${next > was ? 'up' : 'down'} to ${LEVELS[next - 1]}`;
+      }
+    }
+    phraseLog.push({ i, text: ph.text, pct, level: opts.level === 5 ? phraseLevels[i] : opts.level });
+    if (highwayOn()) highway.pop(text, pct >= 90 ? '#3fd39a' : pct < 50 ? '#ef6a6a' : '#c9ccff');
+  }
+  /** Итог песни поверх дороги: точность, лучшая серия и каждая часть (последний проход). */
+  let summary = null;
+  function hideSummary() {
+    summary?.remove();
+    summary = null;
+  }
+  function showSummary() {
+    finishPhrase();
+    hideSummary();
+    if (!highwayOn() || opts.mode === 'listen' || !stats.total) return;
+    const pct = Math.round((stats.hit / stats.total) * 100);
+    const last = new Map();
+    for (const r of phraseLog) last.set(r.i, r);
+    const box = el('div', 'hw-sum');
+    box.append(el('h3', '', 'Song complete'), el('div', 'hw-sum-pct', pct + ' %'), el('p', '', `${stats.hit} of ${stats.total} notes · best streak ${stats.best}`));
+    const list = el('div', 'hw-sum-list');
+    for (const r of [...last.values()].sort((a, b) => a.i - b.i)) {
+      const row = el('div', 'hw-sum-row' + (r.pct >= 90 ? ' is-good' : r.pct < 50 ? ' is-bad' : ''));
+      row.append(el('span', '', r.text), el('b', '', r.pct + ' %'), el('i', '', LEVELS[r.level - 1] || ''));
+      list.append(row);
+    }
+    if (list.childElementCount) box.append(list);
+    const close = el('button', 'btn btn-sm', 'Close');
+    close.addEventListener('click', hideSummary);
+    box.append(close);
+    ref.hw.append(box);
+    summary = box;
+  }
+
   // ---------- «Играть вместе»: каждую долю ждём в окне вокруг её начала ----------
   const pending = []; // { exp, t, until, frames, onset }
   const recent = []; // недавно услышанные ноты { midi, t }
@@ -865,9 +1060,9 @@ export function createTabs(root, { engine, store, chain }) {
     if (opts.mode !== 'along' || !playing) return;
     const now = performance.now();
     for (const p of pending) if (p.until == null) p.until = now + LATE_MS; // прошлой доле — ещё немного времени
-    const exp = expected(beat);
+    const exp = expected(beat, clockPos.tick);
     if (!exp) return;
-    const p = { exp, t: now, until: null, frames: 0 };
+    const p = { exp, t: now, until: null, frames: 0, tick: clockPos.tick };
     // нота могла прозвучать чуть раньше курсора
     if (recent.some((r) => now - r.t < EARLY_MS && matchNote(exp, r.midi) && !exp.template)) return hit(p);
     pending.push(p);
@@ -875,14 +1070,14 @@ export function createTabs(root, { engine, store, chain }) {
   function hit(p) {
     const i = pending.indexOf(p);
     if (i >= 0) pending.splice(i, 1);
-    mark(p.exp.beat, 'hit');
+    mark(p.exp.beat, 'hit', p.tick);
   }
   function closeExpired(now) {
     for (let i = pending.length - 1; i >= 0; i--) {
       const p = pending[i];
       if (p.until != null && now > p.until) {
         pending.splice(i, 1);
-        mark(p.exp.beat, 'miss');
+        mark(p.exp.beat, 'miss', p.tick);
       }
     }
   }
@@ -913,7 +1108,7 @@ export function createTabs(root, { engine, store, chain }) {
     const set = new Set([track.index]);
     let r = lookup.findBeat(set, tick);
     for (let guard = 0; r && guard < 20000; guard++) {
-      const exp = expected(r.beat);
+      const exp = expected(r.beat, r.start);
       if (exp && (includeCurrent || r.start >= tick - 1)) return { r, exp };
       const next = lookup.findBeat(set, r.end);
       if (!next || next.start <= r.start) return null; // конец песни
@@ -929,6 +1124,7 @@ export function createTabs(root, { engine, store, chain }) {
   }
   function setWait(w) {
     waitCur = w ? { ...w, frames: 0, onset: false } : null;
+    highway.setWait(waitCur?.exp.beat, waitCur?.r.start);
     ref.expect.replaceChildren();
     if (waitCur) {
       const cur = waitCur;
@@ -939,13 +1135,14 @@ export function createTabs(root, { engine, store, chain }) {
       showOnFret(cur.exp.notes, 'target');
     } else {
       ref.expect.append(el('b', '', stats.total ? 'The end! To start over, press “Back to start”' : 'No notes found for this track'));
+      if (stats.total) showSummary();
       showOnFret([], 'target');
     }
     drawMarks();
   }
   function advanceWait(kind) {
     if (!waitCur) return;
-    mark(waitCur.exp.beat, kind);
+    mark(waitCur.exp.beat, kind, waitCur.r.start);
     setWait(playableFrom(waitCur.r.end));
   }
   function jumpTo(beat) {
@@ -1015,6 +1212,11 @@ export function createTabs(root, { engine, store, chain }) {
     else renderStats();
     for (const b of ref.mode.children) b.setAttribute('aria-pressed', b.dataset.v === opts.mode);
     ref.profile.setAttribute('aria-pressed', opts.profile === 'both');
+    // у дороги нет нот над табом, масштаба листа и отдельного грифа
+    const hw = highwayOn();
+    ref.profile.hidden = ref.zoomIn.hidden = ref.zoomOut.hidden = ref.fretBtn.hidden = hw;
+    ref.levels.hidden = !hw;
+    for (const b of ref.levels.children) b.setAttribute('aria-pressed', +b.dataset.l === opts.level);
     ref.profile.disabled = !!track && !hasTab(track);
     ref.profile.title = ref.profile.disabled ? 'This track has no tablature — it’s shown as notation' : 'Show notation above the tab (N)';
   }
@@ -1027,6 +1229,8 @@ export function createTabs(root, { engine, store, chain }) {
     marks.clear();
     resetStats();
     waitCur = null;
+    highway.setMode(m);
+    highway.setWait(null);
     if (m === 'along') muteOwnTrack();
     if (m === 'wait') startWait();
     else if (fb) fb.setMarkers([]);
@@ -1305,12 +1509,14 @@ export function createTabs(root, { engine, store, chain }) {
   return {
     setActive(on) {
       active = on;
+      highway.setActive(on && highwayOn());
       if (!on) {
         api?.pause();
         closePop();
         listen(false);
         return;
       }
+      if (highwayOn()) requestAnimationFrame(placeHighway);
       listen(true);
       if (opts.lib) library.load();
       ensureApi().catch(() => {});
@@ -1320,6 +1526,10 @@ export function createTabs(root, { engine, store, chain }) {
     onKey(k, e) {
       if (k === 'ctrl+o') {
         ref.input.click();
+        return true;
+      }
+      if (k === 'h' && score) {
+        if (!e.repeat) setView(opts.view === 'highway' ? 'tab' : 'highway');
         return true;
       }
       if (k === 'ctrl+-' || k === 'ctrl++') {
@@ -1370,6 +1580,10 @@ export function createTabs(root, { engine, store, chain }) {
     get api() {
       return api;
     },
+    get highway() {
+      return highway;
+    },
+    setView,
     get mix() {
       return mix;
     },

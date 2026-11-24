@@ -131,6 +131,41 @@ middle (top to bottom: IN, the chain, OUT) and the selected slot's window with i
   the indicators light up on every note a track plays. The player has speed (25–125 %), loop (select bars with the
   mouse), metronome click, count-in, reverb, zoom and a fretboard view. Modes: *Listen*, *Play along* (your track is muted,
   hits and misses are marked) and *Wait for me*. Tab audio goes to the Windows default output device.
+- **Highway** (**H**) shows the chosen track as a note highway in 3D. The neck stands across the bottom of the screen,
+  thick string on top, and the camera looks at it from above and a little from the player's side. The road runs from
+  the neck's top edge into the distance, one lane per fret, and shows the next two seconds: the notes move fast and
+  stay well apart.
+  - **Notes.** Each note is a small 3D brick in its string's color with a thin stem down to its lane and the fret
+    number at the foot of the stem, so you read the road rather than every brick. It rides down the lane at its
+    string's height and reaches the string just as you play it; the fret lights up in the ruler under the neck and two
+    glowing posts mark it. An open string is a thin glowing line across the hand position.
+  - **Hand position.** The fret numbers under the neck glow yellow where your hand sits, worked out for the whole
+    song in advance; the road itself carries no range lines, so it stays clean. A short position change merges into
+    its neighbour when both fit in six frets, so the hand doesn't jump back and forth.
+  - **Camera.** It zooms with the notes: in close (13 frets) when they stay in a small area, out (up to 22) when
+    they spread across the neck. Your hand sits on the left of the frame and the neck toward the body on the right,
+    so the road comes at the notes at an angle, the way you see your own guitar. It moves only when the notes leave
+    the frame, and it heads for a new place as soon as its notes appear on the road, so a jump from the middle of
+    the neck to the first fret is in view in time.
+  - **Techniques.** A long note has a ribbon as wide as the brick: a slide bends it toward the target fret, vibrato
+    makes it wave and tremolo makes it jagged. Other marks:
+    - hammer-on ▼ and pull-off ▲ above the brick, bend chevrons (two for a step and a half or more, an outline for a
+      half step), T for tapping;
+    - a ring for a harmonic (gold for a pinch harmonic), a glow for an accent, a line under the brick for a palm mute;
+    - muted notes are dark bricks with a cross. They show from Hard up and aren't scored.
+  - **Chords.** A chord gets a glass frame as wide as its notes (across the hand position if an open string rings),
+    with its name above it and in large letters at the left. A repeated chord is the lower half of an empty frame, and
+    two rails on the road show how long to hold it. Finger numbers show near the neck when the file has them.
+  - **Levels.** **Easy · Medium · Hard · Full** sets how many notes the highway shows: Easy keeps about one note per
+    beat and the lowest note of each chord, Medium adds eighths and two-note chords, Hard adds sixteenths and
+    three-note chords, and Full is the whole part. **Auto** gives every part of the song its own level: each starts
+    on Easy, goes up after you play it with 90 % or more and down below 50 %, and is remembered for the song and
+    track. Play along and Wait for me only wait for the notes you can see.
+  - **Progress.** The song is split into parts (from the file's section markers, or eight bars each). When you
+    finish a part its accuracy shows over the road, and at the end
+    of the song a summary lists every part. In a loop, notes you missed on the last pass carry a red **!**.
+  - It works with all three modes: hits burst, misses turn gray, and in *Wait for me* the highway stops at the note.
+    Speed, loop and count-in work as usual, and the library folds away while the highway is on.
 - **Songsterr**: press **Add from Songsterr** at the top of the library and paste a song link or type a band or song,
   or just copy a song link on [Songsterr](https://www.songsterr.com) and press **Ctrl+V** on the Tabs screen.
   Songsterr opens in an app window. It asks you to sign in once
@@ -251,7 +286,7 @@ native/                 the app: .NET 10, WinForms + WebView2, NAudio ASIO
   vst3host/             C wrapper around the VST3 SDK hosting classes and its build script
   third_party/          NeuralAmpModelerCore (with Eigen) and the VST3 SDK (git submodules)
 public/                 the UI (HTML/CSS/JS, no build step), shared by the app and the web version
-  js/modes/             Play (rig.js), exercises, tabs (tabs.js) and the tab library (tablib.js)
+  js/modes/             Play (rig.js), exercises, tabs (tabs.js), the tab library (tablib.js) and Highway (highway.js)
   js/games/             the Games tab: Fret Rain, Glide, Chord Wall and their shared shell
   js/rig/               browser, channel slots, block window, TONE3000 tones (js/blocks.js: block types, starting chain)
   vendor/alphatab/      alphaTab with three small fixes (see PATCHES.md), notation font, sound bank
