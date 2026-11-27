@@ -4,7 +4,7 @@
 
 Grab songs from Songsterr or open your own Guitar Pro files, plug in your guitar and play along: your guitar sounds
 through captures of real amps and pedals while the rest of the band plays from the tab. Poly Amp hears every note and
-shows what you hit and what you missed.
+shows what you hit and what you missed, on the tab or on a Rocksmith-style 3D note highway.
 
 [![Download for Windows](https://img.shields.io/badge/Download-Windows%2010%20%2F%2011-6a6cf0?style=for-the-badge)](../../releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-9c7bf6?style=for-the-badge)](LICENSE)
@@ -22,6 +22,9 @@ shows what you hit and what you missed.
   runs through neural captures of real amps and pedals ([NAM](https://www.neuralampmodeler.com)), with thousands of
   free ones on [TONE3000](https://www.tone3000.com), plus built-in amps, drives, cabs, delay and reverb. A ready
   chain plays right away.
+- 🛣️ **A note highway, Rocksmith-style.** Press **H** on any tab: the notes fly at a 3D fretboard and you play each one
+  as it lands, with slides, bends and chords drawn the way you play them. **Auto** difficulty starts every part of the
+  song easy and adds notes as you nail it.
 - 🎼 **Learn it your way.** Slow a song down, loop the hard part, count in, solo or mute any track, follow it on the
   fretboard.
 - 👂 **It actually listens.** *Play along* marks every hit and miss. *Wait for me* stops until you play the right note.
@@ -29,6 +32,8 @@ shows what you hit and what you missed.
 - 🎯 **Skills, not just songs.** Find notes on the fretboard, run scales against the clock, drill chord changes, or
   play arcade games you control with your guitar. No buttons to press, just play.
 - 🆓 **Free. For real.** No subscription, no ads, no account needed to play. Open source.
+
+![Highway: play a tab like a game, Rocksmith-style](docs/screenshots/highway.gif)
 
 | Your guitar through real amps and pedals | Scales and chords that listen |
 | --- | --- |
@@ -304,6 +309,8 @@ Poly Amp is released under the [MIT License](LICENSE). It uses third-party compo
 core (MIT), Eigen (MPL 2.0), NAudio (MIT), WebView2 SDK, alphaTab (MPL 2.0), the Bravura font (OFL) and the Sonivox
 sound bank (Apache 2.0); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Not affiliated with Arobas Music (Guitar Pro), Steinberg, TONE3000 or Songsterr. Guitar Pro is a trademark of Arobas
-Music; Poly Amp only opens its file formats. VST is a registered trademark of Steinberg Media Technologies GmbH. Amp
-and pedal names in tone titles are trademarks of their owners and are used only to describe the captured gear.
+Not affiliated with Arobas Music (Guitar Pro), Steinberg, TONE3000, Songsterr or Ubisoft. Guitar Pro is a trademark of
+Arobas Music; Poly Amp only opens its file formats. VST is a registered trademark of Steinberg Media Technologies GmbH.
+Rocksmith is a trademark of Ubisoft Entertainment; it is named only to describe the style of the note highway, which is
+Poly Amp's own. Amp and pedal names in tone titles are trademarks of their owners and are used only to describe the
+captured gear.
